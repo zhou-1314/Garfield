@@ -19,12 +19,11 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 def get_centroids(sub_data, labels):
     """
-    Compute the centroids (cluster mean) of arr.
+    Compute the centroids (cluster mean) of adata.
 
     Parameters
     ----------
-    arr: np.array of shape (n_samples, n_features)
-        Data matrix
+    sub_data: scanpy object of each sample
     labels: np.array of shape (n_samples,)
         Cluster labels of each sample, coded from 0, ..., num_clusters-1
 
@@ -132,15 +131,60 @@ def summarize_clustering(clustering, curr_label, true_labels):
 #     tf_idf = csr_matrix(np.dot(diags(idf), tf))
 #     return tf_idf
 
-def tfidf(count_mat):
-    """
-    Perform TF-IDF transformation.
-    """
-    model = TfidfTransformer(smooth_idf=False, norm="l2")
-    model = model.fit(np.transpose(count_mat))
-    model.idf_ -= 1
-    tf_idf = np.transpose(model.transform(np.transpose(count_mat))).astype(np.float32)
-    return csr_matrix(tf_idf)
+# def tfidf(count_mat):
+#     """
+#     Perform TF-IDF transformation.
+#     """
+#     model = TfidfTransformer(smooth_idf=False, norm="l2")
+#     model = model.fit(np.transpose(count_mat))
+#     model.idf_ -= 1
+#     tf_idf = np.transpose(model.transform(np.transpose(count_mat))).astype(np.float32)
+#     return csr_matrix(tf_idf)
+
+
+def tfidf(X, n_components, binarize=True, random_state=0):
+    import sklearn
+    from sklearn.feature_extraction.text import TfidfTransformer
+
+    sc_count = np.copy(X)
+    if binarize:
+        sc_count = np.where(sc_count < 1, sc_count, 1)
+
+    tfidf = TfidfTransformer(norm='l2', sublinear_tf=True)
+    normed_count = tfidf.fit_transform(sc_count)
+
+    lsi = sklearn.decomposition.TruncatedSVD(n_components=n_components, random_state=random_state)
+    lsi_r = lsi.fit_transform(normed_count)
+
+    X_lsi = lsi_r[:, 1:]
+
+    return normed_count, X_lsi
+
+def TFIDF_LSI(adata, n_comps=50, binarize=True, random_state=0):
+    '''
+    Computes LSI based on a TF-IDF transformation of the data from MultiMap. Putative dimensionality
+    reduction for scATAC-seq data. Adds an ``.obsm['X_lsi']`` field to the object it was ran on.
+
+    Input
+    -----
+    adata : ``AnnData``
+        The object to run TFIDF + LSI on. Will use ``.X`` as the input data.
+    n_comps : ``int``
+        The number of components to generate. Default: 50
+    binarize : ``bool``
+        Whether to binarize the data prior to the computation. Often done during scATAC-seq
+        processing. Default: True
+    random_state : ``int``
+        The seed to use for randon number generation. Default: 0
+    '''
+
+    # this is just a very basic wrapper for the non-adata function
+    import scipy
+    if scipy.sparse.issparse(adata.X):
+        adata.X, adata.obsm['X_lsi'] = tfidf(adata.X.todense(), n_components=n_comps, binarize=binarize,
+                                    random_state=random_state)
+    else:
+        adata.X, adata.obsm['X_lsi'] = tfidf(adata.X, n_components=n_comps, binarize=binarize, random_state=random_state)
 
 ## Predict gene scores based on chromatin accessibility
 ## issue https://www.biostars.org/p/114460/ 需要确保bedtools被安装了。
@@ -196,7 +240,7 @@ class GeneScores:
                  tss_downsteam=1e5,
                  gb_upstream=5000,
                  cutoff_weight=1,
-                 use_top_pcs=True,
+                 use_top_pcs=False,
                  use_precomputed=True,
                  use_gene_weigt=True,
                  min_w=1,

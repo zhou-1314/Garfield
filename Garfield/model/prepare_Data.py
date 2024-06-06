@@ -12,6 +12,7 @@ from sklearn.preprocessing import LabelEncoder
 
 import scanpy as sc
 import muon as mu
+from mudata import MuData
 
 ## read data
 from ..preprocessing.read_adata import concat_data
@@ -30,18 +31,87 @@ from ._utils import Transfer_scData
 
 
 class UserDataset(InMemoryDataset):
-    def __init__(self, root, project_name, adata_list, profile, data_type=None, genome=None, sample_col='batch',
-                 filter_cells_rna=False, min_features=100, min_cells=3, keep_mt=False, use_top_pcs=True,
+    def __init__(self, root, project_name, adata_list, profile, data_type=None, weight=None, genome=None, sample_col='batch',
+                 filter_cells_rna=False, min_features=100, min_cells=3, keep_mt=False, use_top_pcs=False,
                  use_gene_weigt=True, normalize=True, target_sum=1e4, used_hvg=True, used_scale=True,
                  single_n_top_genes=2000, rna_n_top_features=3000, atac_n_top_features=10000,
                  metacell_size=2, n_pcs=20, n_neighbors=15, metacell=True, metric='correlation',
                  method='umap', svd_solver='arpack', resolution_tol=0.1, leiden_runs=1,
                  leiden_seed=None, verbose=True):
+        """
+        UserDataset class for managing and processing single-cell or multi-modal datasets.
+
+        Parameters:
+        -----------
+        root : str
+            The directory where the graph dataset should be stored.
+        project_name : str
+            Name of the project for the dataset.
+        adata_list : list
+            List of AnnData objects representing different batches of data.
+        profile : str
+            Type of data profile, e.g., 'RNA', 'ATAC', 'multi-modal'.
+        data_type : str, optional
+            Type of multi-modal data, e.g., 'Paired', 'UnPaired'. Default is None.
+        genome : str, optional
+            Genome reference name, e.g., 'hg19', 'hg38', 'mm9', 'mm10'. Default is None, but if data_type is set as 'UnPaired', genome must be set.
+        sample_col : str, optional
+            Column name that defines different samples. Default is 'batch'.
+        filter_cells_rna : bool, optional
+            Whether to filter cells based on RNA expression. Default is False.
+        min_features : int, optional
+            Minimum number of features required for a cell. Default is 100.
+        min_cells : int, optional
+            Minimum number of cells required for a feature. Default is 3.
+        keep_mt : bool, optional
+            Whether to keep mitochondrial genes. Default is False.
+        use_top_pcs : bool, optional
+            Whether to use top principal components (PCs). Default is True.
+        use_gene_weigt : bool, optional
+            Whether to use gene weighting. Default is True.
+        normalize : bool, optional
+            Whether to normalize the data. Default is True.
+        target_sum : float, optional
+            Target sum for total count normalization. Default is 1e4.
+        used_hvg : bool, optional
+            Whether to use highly variable genes. Default is True.
+        used_scale : bool, optional
+            Whether to scale the data. Default is True.
+        single_n_top_genes : int, optional
+            Number of top genes to select for single-sample analysis. Default is 2000.
+        rna_n_top_features : int, optional
+            Number of top features to select for RNA profile. Default is 3000.
+        atac_n_top_features : int, optional
+            Number of top features to select for ATAC profile. Default is 10000.
+        metacell_size : int, optional
+            Size of metacell clusters, which will determine the number of metacell clusters. Default is 2.
+        n_pcs : int, optional
+            Number of principal components to use for each sample processing. Default is 20.
+        n_neighbors : int, optional
+            Number of neighbors for graph construction. Default is 15.
+        metacell : bool, optional
+            Whether to construct metacells. Default is True.
+        metric : str, optional
+            Distance metric for nearest neighbor search. Default is 'correlation'.
+        method : str, optional
+            Dimensionality reduction method. Default is 'umap'.
+        svd_solver : str, optional
+            SVD solver to use for PCA. Default is 'arpack'.
+        resolution_tol : float, optional
+            Tolerance level for resolution clustering. Default is 0.1.
+        leiden_runs : int, optional
+            Number of times to run Leiden clustering. Default is 1.
+        leiden_seed : int or None, optional
+            Seed for the Leiden algorithm. Default is None.
+        verbose : bool, optional
+            Whether to print progress information. Default is True.
+        """
 
         self.name = project_name
         self.data_list = adata_list
         self.profile = profile
         self.data_type = data_type
+        self.weight = weight
         self.genome = genome
         self.use_gene_weigt = use_gene_weigt
         self.use_top_pcs = use_top_pcs
@@ -333,11 +403,10 @@ class UserDataset(InMemoryDataset):
             self.data_list,
             batch_categories=None,
             join='inner',
-            batch_key='batch',
+            batch_key=self.sample_col, # 'batch'
             index_unique=None,
             save=None
         )
-        adata.layers['counts'] = adata.X.copy()
 
         ### sc.AnnData
         if isinstance(adata, sc.AnnData):
@@ -396,7 +465,6 @@ class UserDataset(InMemoryDataset):
         elif isinstance(adata, mu.MuData):
             rna_adata = adata.mod['rna'].copy()
             atac_adata = adata.mod['atac'].copy()
-            mdata = adata.copy()
             del adata
 
             ## 确保输入的矩阵为 counts
@@ -421,12 +489,15 @@ class UserDataset(InMemoryDataset):
             else:
                 rna_adata = rna_adata.copy()
 
+                mdata = MuData({"rna": rna_adata, "atac": atac_adata})
+
             ## 预处理
             merged_adata = preprocessing(
                 mdata,
                 profile=self.profile,
                 data_type=self.data_type,
                 genome=self.genome,
+                weight=self.weight,
                 use_gene_weigt=self.use_gene_weigt,
                 use_top_pcs=self.use_top_pcs,
                 min_features=self.min_features,
@@ -447,7 +518,7 @@ class UserDataset(InMemoryDataset):
             torch.save(merged_adata, path, pickle_protocol=4)
 
             ## 构建 pytorch_geometric 的数据结构
-            data = Transfer_scData(merged_adata, self.sample_col, self.profile)
+            data = Transfer_scData(merged_adata, self.sample_col, self.data_type)
 
         else:
             return "Unknown input data type."

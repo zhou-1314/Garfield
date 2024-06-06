@@ -1,4 +1,13 @@
 """Garfield model"""
+from .prepare_Data import (
+    UserDataset
+)
+from .GarfieldTrainer import (
+    GarfieldTrainer
+)
+from .Garfield_net import (
+    Garfield
+)
 from ._layers import (
     DSBatchNorm,
     GATEncoder,
@@ -24,13 +33,4 @@ from ._tools import (
 from ._utils import (
     Transfer_scData,
     scipy_sparse_mat_to_torch_sparse_tensor
-)
-from .Garfield_net import (
-    Garfield
-)
-from .GarfieldTrainer import (
-    GarfieldTrainer
-)
-from .prepare_Data import (
-    UserDataset
 )

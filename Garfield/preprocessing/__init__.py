@@ -26,6 +26,7 @@ from ._graph import (
     graph_clustering
 )
 from .read_adata import (
+	read_mtx,
     read_scData,
     read_multi_scData,
     concat_data

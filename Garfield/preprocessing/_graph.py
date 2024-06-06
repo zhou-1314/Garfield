@@ -78,6 +78,8 @@ def construct_graph_rna(
         adata Data 
     n_neighbors: int
         Number of neighbors desired
+    n_pcs: int
+        Number PCs of executing graph construction
     metric: string, default='correlation'
         Metric used when constructing the initial knn graph
     verbose: bool, default=True

@@ -5,6 +5,7 @@ import scipy
 from scipy.sparse import issparse, csr
 
 from anndata import AnnData
+from muon import MuData
 import muon as mu
 import scanpy as sc
 from glob import glob
@@ -44,7 +45,7 @@ def read_mtx(path):
 
 def read_scData(path, backed=False):
     """
-    Load single cell dataset from file
+    Read single cell dataset from single file
 
     Parameters
     ----------
@@ -88,7 +89,7 @@ def read_scData(path, backed=False):
 
 def read_multi_scData(root):
     """
-    Load single cell dataset from files
+    Read single cell dataset from multiple files
 
     Parameters
     ----------
@@ -141,27 +142,31 @@ def concat_data(
         return read_multi_scData(data_list[0])
     elif isinstance(data_list, str):
         return read_multi_scData(data_list)
-    elif isinstance(data_list, AnnData):
+    elif isinstance(data_list, (AnnData, MuData)):
         return data_list
 
     adata_list = []
     for root in data_list:
-        if isinstance(root, AnnData):
+        if isinstance(root, (AnnData, MuData)):
             adata = root
         else:
             adata = read_multi_scData(root)
         adata_list.append(adata)
 
-    if batch_categories is None:
-        batch_categories = list(map(str, range(len(adata_list))))
-    else:
-        assert len(adata_list) == len(batch_categories)
-    # [print(b, adata.shape) for adata,b in zip(adata_list, batch_categories)]
-    concat = AnnData.concatenate(*adata_list, join=join, batch_key=batch_key,
-                                 batch_categories=batch_categories, index_unique=index_unique)
-    if 'batch' not in concat.obs:
-        concat.obs['batch'] = 'batch'
-    concat.obs['batch'] = concat.obs['batch'].astype('category')
+    if isinstance(data_list[0], AnnData):
+        if batch_categories is None:
+            batch_categories = list(map(str, range(len(adata_list))))
+        else:
+            assert len(adata_list) == len(batch_categories)
+        # [print(b, adata.shape) for adata,b in zip(adata_list, batch_categories)]
+        concat = AnnData.concatenate(*adata_list, join=join, batch_key=batch_key,
+                                     batch_categories=batch_categories, index_unique=index_unique)
+    elif isinstance(data_list[0], MuData):
+        concat = adata_list ## MuData
+
+    if batch_key not in concat.obs:
+        concat.obs[batch_key] = 'batch'
+    concat.obs[batch] = concat.obs[batch].astype('category')
 
     if save:
         concat.write(save, compression='gzip')

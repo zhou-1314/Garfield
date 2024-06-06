@@ -9,10 +9,11 @@ from torch import Tensor
 import torch.nn.functional as F
 from torch.nn.functional import normalize
 from torch_geometric.utils import negative_sampling
+from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv, GATConv
 from torch_geometric.nn import GAE, InnerProductDecoder
 
-from ._utils import scipy_sparse_mat_to_torch_sparse_tensor
+from ._utils import scipy_sparse_mat_to_torch_sparse_tensor, extract_subgraph
 
 # Domain-specific Batch Normalization（领域特定的批次归一化）是一种调整神经网络中批次归一化层以适应不同输入数据源或领域的技术。
 class DSBatchNorm(nn.Module):
@@ -30,7 +31,8 @@ class DSBatchNorm(nn.Module):
             domain number
         """
         super().__init__()
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cpu")
         self.n_domain = n_domain
         self.num_features = num_features
         self.bns = nn.ModuleList(
@@ -64,8 +66,35 @@ class DSBatchNorm(nn.Module):
 class GATEncoder(nn.Module):
     def __init__(self, in_channels, hidden_dims, latent_dim, svd_q, num_heads,
                  dropout, concat, num_domains='', used_edge_weight=False, used_DSBN=False):
+        """
+        Initializes the GATEncoder
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature dimensions (length of each node's feature vector).
+        hidden_dims : list[int]
+            List of output dimensions for each hidden layer in the GAT.
+        latent_dim : int
+            Dimension of the latent feature representation produced by the encoder.
+        svd_q : int
+            Rank for the low-rank SVD approximation. Default is 5.
+        num_heads : int
+            Number of attention heads for each GAT layer.
+        dropout : float
+            Dropout rate for GAT layers.
+        concat : bool
+            Whether to concatenate outputs of all attention heads or not.
+        num_domains : int or str
+            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+        used_edge_weight : bool, optional
+            Whether to use edge weights in the GAT layers (default is False).
+        used_DSBN : bool, optional
+            Whether to use domain-specific batch normalization (DSBN) (default is False).
+        """
         super(GATEncoder, self).__init__()
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cpu")
         self.svd_q = svd_q
         self.used_DSBN = used_DSBN
         self.used_edge_weight = used_edge_weight
@@ -212,7 +241,33 @@ class GATEncoder(nn.Module):
 class GATDecoder(nn.Module):
     def __init__(self, in_channels, hidden_dims, out_channels, num_heads, dropout, concat,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
+        """
+        Initializes the GATDecoder
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature dimensions.
+        hidden_dims : list[int]
+            List of output dimensions for each hidden layer in the GAT, in ascending order.
+        out_channels : int
+            Number of output feature dimensions.
+        num_heads : int
+            Number of attention heads for each GAT layer.
+        dropout : float
+            Dropout rate for GAT layers.
+        concat : bool
+            Whether to concatenate outputs of all attention heads or not.
+        num_domains : int or str
+            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+        used_edge_weight : bool, optional
+            Whether to use edge weights in the GAT layers (default is False).
+        used_DSBN : bool, optional
+            Whether to use domain-specific batch normalization (DSBN) (default is False).
+        """
         super(GATDecoder, self).__init__()
+
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.used_DSBN = used_DSBN
         self.used_edge_weight = used_edge_weight
@@ -257,6 +312,7 @@ class GATDecoder(nn.Module):
             else:
                 current_dim = hidden_dims[::-1][i]
 
+        ### 数据集总重构的layers
         self.conv_recon = GATLayer(in_channels=current_dim,
                                    out_channels=out_channels,
                                    heads=num_heads,
@@ -273,7 +329,7 @@ class GATDecoder(nn.Module):
 
         for idx, layer in enumerate(self.layers):
             x, _ = layer(x, edge_index, edge_attr=edge_weight if self.used_edge_weight else None,
-                            return_attention_weights=True)
+                         return_attention_weights=True)
             if self.used_DSBN:
                 if self.norm:
                     if len(x) == 1:
@@ -285,22 +341,43 @@ class GATDecoder(nn.Module):
                     x = F.relu(x)
         #                 x = F.dropout(x, p=self.dropout, training=self.training)
 
-        recon_x = self.conv_recon(x, edge_index,
-                                  edge_attr=edge_weight if self.used_edge_weight else None,
-                                  return_attention_weights=False)
-        return recon_x[0]
+        recon_x, _ = self.conv_recon(x, edge_index,
+                                     edge_attr=edge_weight if self.used_edge_weight else None,
+                                     return_attention_weights=True)
 
+        return recon_x
 
 ### GCN encoder
 class GCNEncoder(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, svd_q, dropout=0.2,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
+        """
+        Initializes the GCNEncoder
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature dimensions (length of each node's feature vector).
+        hidden_channels : list[int]
+            List of output dimensions for each hidden layer in the GCN.
+        out_channels : int
+            Dimension of the output feature representation produced by the encoder.
+        svd_q : int
+            Rank for the low-rank SVD approximation.
+        dropout : float
+            Dropout rate for GCN layers.
+        num_domains : int or str
+            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+        used_edge_weight : bool, optional
+            Whether to use edge weights in the GAT layers (default is False).
+        used_DSBN : bool, optional
+            Whether to use domain-specific batch normalization (DSBN) (default is False).
+        """
         super(GCNEncoder, self).__init__()
         # 如果 hidden_channels 是单一数字，将其转换成单元素列表
         if isinstance(hidden_channels, int):
             hidden_channels = [hidden_channels]
 
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.svd_q = svd_q
         self.used_DSBN = used_DSBN
         self.used_edge_weight = used_edge_weight
@@ -413,6 +490,26 @@ class GCNEncoder(nn.Module):
 class GCNDecoder(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, dropout=0.2,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
+        """
+        Initializes the GCNDecoder
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature dimensions.
+        hidden_channels : list[int]
+            List of output dimensions for each hidden layer in the GCN, in ascending order.
+        out_channels : int
+            Number of output feature dimensions.
+        dropout : float
+            Dropout rate for GAT layers.
+        num_domains : int or str
+            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+        used_edge_weight : bool, optional
+            Whether to use edge weights in the GAT layers (default is False).
+        used_DSBN : bool, optional
+            Whether to use domain-specific batch normalization (DSBN) (default is False).
+        """
         super(GCNDecoder, self).__init__()
         # 如果 hidden_channels 是单一数字，将其转换成单元素列表
         if isinstance(hidden_channels, int):
@@ -480,6 +577,21 @@ EPS = 1e-15
 MAX_LOGSTD = 10
 class GCNModelVAE(GAE):
     def __init__(self, encoder, enc_in_channels, n_domain, args, decoder=None):
+        """
+        Initializes the GCNModelVAE
+        Parameters
+        ----------
+        encoder : nn.Module
+            The encoder module used in the variational graph autoencoder. 'GAT' or 'GCN'
+        enc_in_channels : int
+            Number of input feature dimensions for the encoder.
+        n_domain : int
+            Number of domains for domain-specific batch normalization (DSBN).
+        args : Namespace
+            Arguments that include hyperparameters and configurations such as dropout rate, latent dimensions, etc.
+        decoder : nn.Module, optional
+            The decoder module used in the variational autoencoder. Defaults to `InnerProductDecoder` if not specified.
+        """
         super(GCNModelVAE, self).__init__(encoder, decoder)
         self.decoder = InnerProductDecoder() if decoder is None else decoder
 
@@ -571,11 +683,10 @@ class GCNModelVAE(GAE):
         """
         pos_loss = -torch.log(
             self.decoder(z, pos_edge_index, sigmoid=True) + EPS).mean()
-
         if neg_edge_index is None:
             neg_edge_index = negative_sampling(pos_edge_index, z.size(0))
         neg_loss = -torch.log(1 -
-                              self.decoder(z, neg_edge_index, sigmoid=True) +
+                              self.decoder(z, neg_edge_index.long(), sigmoid=True) +
                               EPS).mean()
 
         return pos_loss + neg_loss
@@ -663,7 +774,14 @@ class GCNModelVAE(GAE):
             return z1, z_1, z_2, c_1, c_2, mean1, logstd1
 
     def single_test(self, data):
-        pos_edge_label_index, neg_edge_label_index = data.pos_edge_label_index, data.neg_edge_label_index
+        # Ensure test_data contains neg_edge_label_index
+        if not hasattr(data, 'neg_edge_label_index'):
+            data.neg_edge_label_index = negative_sampling(
+                edge_index=data.pos_edge_label_index,
+                num_nodes=data.num_nodes
+            )
+
+        pos_edge_label_index, neg_edge_label_index = data.pos_edge_label_index.long(), data.neg_edge_label_index.long()
         with torch.no_grad():
             all_mu = []
             for _ in range(self.gnn_layer):

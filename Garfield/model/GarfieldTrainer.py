@@ -5,7 +5,8 @@ from types import SimpleNamespace
 from collections import defaultdict
 import os
 import time
-# from tqdm import tqdm, trange
+import matplotlib.pyplot as plt
+
 import numpy as np
 import random
 import scanpy as sc
@@ -20,11 +21,15 @@ from torch_geometric.loader import NeighborLoader, DataLoader, NodeLoader
 import torch_geometric.transforms as T
 
 from .._settings import settings
+from ._utils import extract_subgraph
 from ._tools import EarlyStopping, print_progress
-from ._loss import VGAE_loss, InstanceLoss, ClusterLoss, mmd_loss_calc
+from ._loss import VGAE_loss, InstanceLoss, ClusterLoss, mmd_loss_calc, unbalanced_ot, cosine_sim
 from .prepare_Data import UserDataset
 from .Garfield_net import Garfield
 
+# from torch.optim.lr_scheduler import StepLR
+# from scheduler import CosineAnnealingWarmRestarts
+# GAMMA=0.9
 
 warnings.filterwarnings("ignore", category=UserWarning, module="torch_geometric")
 class GarfieldTrainer(object):
@@ -42,8 +47,8 @@ class GarfieldTrainer(object):
                 "`gf_params` must be dict"
 
         self.args = SimpleNamespace(**gf_params)
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-        #         self.device = torch.device("cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cpu")
         seed = 2024
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
@@ -61,12 +66,14 @@ class GarfieldTrainer(object):
         """
         Loading and processing dataset.
         """
-        print("\nPreparing dataset.\n")
+        print("\nPreparing dataset...\n")
         self.training_graphs = UserDataset(root="{}/".format(self.args.data_dir),
                                            project_name=self.args.project_name,
                                            adata_list=self.args.adata_list,
                                            profile=self.args.profile,
                                            data_type=self.args.data_type,
+                                           weight=self.args.weight,
+                                           genome=self.args.genome,
                                            sample_col=self.args.sample_col,
                                            filter_cells_rna=self.args.filter_cells_rna,
                                            min_features=self.args.min_features,
@@ -148,7 +155,7 @@ class GarfieldTrainer(object):
     def create_batches(self, is_train=True):
         """
         Creating batches from the training graph list.
-        :return batches: Zipped loaders as list.
+        :return batches: training or testing loaders.
         """
         if is_train:
             if self.args.num_neighbors is None:
@@ -185,14 +192,17 @@ class GarfieldTrainer(object):
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.gradient_clipping)
         self.optimizer.step()
 
-    def on_epoch_end(self, val_data, test_data, device):
+    def validate_batch(self, val_data, test_data, device):
         # Get Train Epoch Logs
         for key in self.iter_logs:
             self.logs["epoch_" + key].append(np.array(self.iter_logs[key]).mean())
 
         # Validate Model
-        if self.args.test_split > 0 or self.args.val_split > 0:
-            vali_loss = self.validate(val_data, test_data, device)
+        vali_loss = self.validate(val_data, device)
+
+        # AUC & precision
+        # if self.args.test_split > 0: # and test_data.pos_edge_label_index.size(1) > 10
+        self.test_metrics(test_data)
 
         # Monitor Logs
         if self.args.monitor_only_val_losses:
@@ -222,10 +232,10 @@ class GarfieldTrainer(object):
             z, z_1, z_2, c_1, c_2, mu, logstd = self.model(batch_data)
 
         # loss calculations
-        cell_batch = cell_batch.detach().cpu()
-        unique_groups, group_indices = np.unique(cell_batch, return_inverse=True)
-
         # VGAE ELBO loss
+        # print('batch_data is', batch_data)
+        # print('z shape is', z.shape)
+        # print('batch_data.pos_edge_label_index shape is', batch_data.pos_edge_label_index.shape)
         vgae_loss = VGAE_loss(self.model.VGAE, z, mu, logstd, batch_data.pos_edge_label_index).to(device)
 
         # Contrastive losses
@@ -240,16 +250,49 @@ class GarfieldTrainer(object):
         regu_loss *= self.args.l2_reg
 
         if self.args.used_recon_exp:
+            ## total expr loss
             recon_loss = F.mse_loss(b_gene, recon_features) * b_gene.size(-1)
         else:
             recon_loss = torch.tensor(0.0).to(device)
 
-        # Total loss
+        # MMD loss
         if self.args.used_mmd:
-            # MMD loss
+            cell_batch = cell_batch.detach().cpu()
+            unique_groups, group_indices = np.unique(cell_batch, return_inverse=True)
             grouped_z_cell = {group: z[group_indices == i] for i, group in enumerate(unique_groups)}
             group_labels = list(unique_groups)
             num_groups = len(group_labels)
+
+            ## OT loss
+            # 计算两两组之间的距离
+            # ot_loss = torch.tensor(0.0).to(self.device)
+            # Prior_batch = None
+            #
+            # tran_batch = {}
+            # for i in range(num_groups):
+            #     for j in range(i + 1, num_groups):
+            #         ns = grouped_z_cell[group_labels[i]].size(0)
+            #         nt = grouped_z_cell[group_labels[j]].size(0)
+            #         tran_tmp = np.ones((ns, nt)) / (ns * nt)
+            #         tran = tran_tmp.astype(np.float32)
+            #         tran = torch.from_numpy(tran).to(self.device)
+            #         # print('Size of transport plan between datasets {} and {}:'.format(i, j), np.shape(tran))
+            #
+            #         #
+            #         z_i = grouped_z_cell[group_labels[i]]
+            #         z_j = grouped_z_cell[group_labels[j]]
+            #
+            #         # 计算unbalanced_ot
+            #         output_name = str(i) + '_' + str(j)
+            #         ot_loss_tmp, tran_batch[output_name] = unbalanced_ot(tran, z_i, z_j, Couple=Prior_batch, device=self.device, reg=0.1, reg_m=1.0)
+            #
+            #         if False: # save_OT TODO
+            #             t0 = np.repeat(idx_query[j].cpu().numpy(), len(idx_ref)).reshape(len(idx_query[j]),len(idx_ref))
+            #             t1 = np.tile(idx_ref.cpu().numpy(), (len(idx_query[j]), 1))
+            #             tran[j][t0,t1] = tran_batch[j].cpu().numpy()
+            #
+            #         ot_loss += ot_loss_tmp # * 10
+
             mmd_loss = torch.tensor(0.0).to(device)
             for i in range(num_groups):
                 for j in range(i + 1, num_groups):
@@ -285,6 +328,10 @@ class GarfieldTrainer(object):
             lr=self.args.learning_rate,
             weight_decay=self.args.weight_decay,
         )
+        # self.scheduler = StepLR(self.optimizer, step_size=1, gamma=GAMMA)
+        # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     self.optimizer, mode="min", factor=0.5, patience=5, min_lr=1e-6
+        # )
         self.model.train()
 
         # epochs = trange(self.args.epochs, leave=True, desc="Epoch")
@@ -294,36 +341,32 @@ class GarfieldTrainer(object):
             self.iter_logs = defaultdict(list)
             loader = self.create_batches(is_train=True)
             for index, batch in enumerate(loader):
-                batch.train_mask = batch.val_mask = batch.test_mask = None
-                if (self.args.test_split is not None):
+                if self.args.test_split > 0 and self.args.val_split > 0:
                     test_split = self.args.test_split
                     val_split = self.args.val_split
-                else:
-                    # PyTorch Geometric does not allow 0 training samples (all test), so we need to store all test data as 'training'.
-                    test_split = 0.0
-                    val_split = 0.0
-
-                # Can set validation ratio
-                try:
+                    # Can set validation ratio
                     transform = T.RandomLinkSplit(num_val=val_split, num_test=test_split, is_undirected=True,
                                                   add_negative_train_samples=False,
-                                                  split_labels=True)  # add_negative_train_samples
+                                                  split_labels=True)
                     train_data, val_data, test_data = transform(batch)
-                    train_data = train_data.to(self.device)
-                    val_data = val_data.to(self.device)
-                    test_data = test_data.to(self.device)
-                except IndexError as ie:
-                    print()
-                    print(colored('Exception: ' + str(ie), 'red'))
-                    sys.exit(1)
+                else:
+                    train_data = batch.to(self.device)
+                    # 直接使用 edge_index 作为 pos_edge_label_index
+                    train_data.pos_edge_label_index = train_data.edge_index
+                    val_data = test_data = train_data
 
+                train_data = train_data.to(self.device)
+                val_data = val_data.to(self.device)
+                test_data = test_data.to(self.device)
                 ## Loss Calculation(training mode)
                 self.process_batch(train_data, self.device)
                 torch.cuda.empty_cache()
 
                 # Validation of Model, Monitoring, Early Stopping
-                vali_loss = self.on_epoch_end(val_data, test_data, self.device)
+                vali_loss = self.validate_batch(val_data, test_data, self.device)
                 vali_loss = vali_loss.detach().cpu()#.numpy()
+                # 在每个epoch结束时调用scheduler.step()来更新学习率
+                # self.scheduler.step()
 
             ## early_stopping
             self.early_stopping(vali_loss, self.model)
@@ -337,26 +380,55 @@ class GarfieldTrainer(object):
         self.save()
 
     @torch.no_grad()
-    def validate(self, val_data, test_data, device):
+    def validate(self, val_data, device):
         self.model.eval()
         self.iter_logs = defaultdict(list)
 
-        # Calculate Validation Losses
-        roc_auc, ap = self.model.VGAE.single_test(test_data)
-
-        ## test loss
+        ## validation loss
         vali_loss = self.calculate_losses(val_data, device)
 
         # Get Validation Logs
         for key in self.iter_logs:
             self.logs["val_" + key].append(np.array(self.iter_logs[key]).mean())
+
+        self.model.train()
+
+        return vali_loss
+
+    @torch.no_grad()
+    def test_metrics(self, test_data):
+        self.model.eval()
+
+        # Calculate test metrics
+        roc_auc, ap = self.model.VGAE.single_test(test_data)
+
         ## roc_auc, ap info
         self.logs["test_" + 'roc_auc'].append(np.array(roc_auc).mean())
         self.logs["test_" + 'precision'].append(np.array(ap).mean())
 
         self.model.train()
 
-        return vali_loss
+    ## Loss curve
+    def plot_losses_curve(self, title="Training Losses Curve", show=True, save=False, dir_path=None):
+        if save:
+            show = False
+            if dir_path is None:
+                save = False
+
+        fig = plt.figure()
+        elbo_train = self.logs["epoch_total_loss"]
+        elbo_test = self.logs["val_total_loss"]
+        x = np.linspace(0, len(elbo_train), num=len(elbo_train))
+        plt.plot(x, elbo_train, label="Train")
+        plt.plot(x, elbo_test, label="Validate")
+        plt.ylim(min(elbo_test) - 50, max(elbo_test) + 50)
+        plt.legend()
+        plt.title(title)
+        if save:
+            plt.savefig(f'{dir_path}.png', bbox_inches='tight')
+        if show:
+            plt.show()
+        plt.clf()
 
     ## 获取隐变量
     @torch.no_grad()

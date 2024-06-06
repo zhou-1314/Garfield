@@ -1,7 +1,5 @@
-# Garfield
-**G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**d**ding.
-
-<img src="imgs/Garfield_framework.png" alt="Garfield" width="700"/>
+# Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
+<img src="imgs/Garfield_framework.png" alt="Garfield" width="900"/>
 
 ## Repository layout
 ```
@@ -165,12 +163,22 @@ sc.pl.umap(adata_final, color=['cell_type1'], wspace=0.15, edges=False)
 ## Support
 Please submit issues or reach out to zhouwg1314@gmail.com.
 
-## Authors and acknowledgment
-Weige Zhou
+## Acknowledgment
+ccVAE uses and/or references the following libraries and packages:
+
+- [SIMBA](https://github.com/pinellolab/simba)
+- [scanpy](https://github.com/scverse/scanpy)
+
+Thanks for all their contributors and maintainers!
 
 ## Citation
 If you have used Garfiled for your work, please consider citing:
-```
-Weige Zhou (2024).Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding. https://github.com/zhou-1314/Garfield
+```bibtex
+@misc{2024Garfield,
+    title={Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding},
+    author={Weige Zhou},
+    howpublished = {\url{https://github.com/zhou-1314/Garfield}},
+    year={2024}
+}
 ```
 

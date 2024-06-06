@@ -1,0 +1,8 @@
+About Garfield
+===========
+
+Garfield (**G**raph-based Contrastive Le**ar**ning enables **F**ast S**i**ngle-C**el**l Embe**d**ding) is a highly versatile single-cell embedding framework that integrates heterogeneous single-cell single- and multi-omics datasets into a shared latent space. By conceptualizing single-cell analyses as graph representation learning problems, Garfield adeptly addresses essential tasks such as clustering, batch effect correction, multi-omics integration (paired and unpaired), and the deconvolution of heterogeneous spatial transcriptomic data.
+
+Garfield initially encodes all cells into a unified graph, where each node represents an individual cell and edges delineate inter-cellular relationships. It then leverages a robust representation learning paradigm, the Variational Graph Autoencoder (VGAE), while incorporating an MMD-based transformation and Domain-Specific Batch Normalization (DSBN) alignment to embed cells (nodes) into a low-dimensional, batch-invariant biological space conducive to batch effect correction and multi-omics integration tasks. For single-cell RNA or ATAC clustering, Garfield solely employs the VGAE framework without the need for MMD and DSBN alignment, preserving intrinsic semantic structures and effectively capturing the inherent biological variation within cells.
+
+Overall, Garfield embodies remarkable versatility, accommodating diverse features across various modalities as long as they can be encoded into a connected graph. By providing a unified and generalizable framework, Garfield facilitates the streamlined formulation of diverse single-cell problems and simplifies the extensions to emerging single-cell modalities and accelerates biological discoveries.
