@@ -1,5 +1,5 @@
 # Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
-<img src="imgs/Garfield_framework.png" alt="Garfield" width="900"/>
+<img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
 
 ## Repository layout
 ```
