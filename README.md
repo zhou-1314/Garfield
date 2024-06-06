@@ -164,7 +164,7 @@ sc.pl.umap(adata_final, color=['cell_type1'], wspace=0.15, edges=False)
 Please submit issues or reach out to zhouwg1314@gmail.com.
 
 ## Acknowledgment
-ccVAE uses and/or references the following libraries and packages:
+Garfield uses and/or references the following libraries and packages:
 
 - [SIMBA](https://github.com/pinellolab/simba)
 - [scanpy](https://github.com/scverse/scanpy)
