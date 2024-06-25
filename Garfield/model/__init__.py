@@ -14,7 +14,7 @@ from ._layers import (
     GATDecoder,
     GCNEncoder,
     GCNDecoder,
-    GCNModelVAE
+    GNNModelVAE
 )
 from ._loss import (
     VGAE_loss,

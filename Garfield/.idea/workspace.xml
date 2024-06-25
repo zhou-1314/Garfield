@@ -5,22 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="084298c8-5129-484f-b260-d81a522950ce" name="Changes" comment="Changes">
-      <change beforePath="$PROJECT_DIR$/../Garfield/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/_settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/_settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/_version.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/_version.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/GarfieldTrainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/GarfieldTrainer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/Garfield_net.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/Garfield_net.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/_layers.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/_layers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/_loss.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/_loss.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/model/prepare_Data.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/model/prepare_Data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/preprocessing/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/preprocessing/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/preprocessing/_graph.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/preprocessing/_graph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/preprocessing/_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/preprocessing/_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/preprocessing/preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/preprocessing/preprocess.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garfield/preprocessing/read_adata.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Garfield/preprocessing/read_adata.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/_settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/_version.py" beforeDir="false" afterPath="$PROJECT_DIR$/_version.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/GarfieldTrainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/GarfieldTrainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/Garfield_net.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/Garfield_net.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/_layers.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/_layers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/prepare_Data.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/prepare_Data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/spatial_test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/model/spatial_test.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessing/_graph.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessing/_graph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessing/_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessing/_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessing/preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessing/preprocess.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessing/read_adata.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessing/read_adata.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../test/ATAC_10x_pbmc_analysis-Copy2.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../test/ATAC_10x_pbmc_analysis-Copy2.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../test/ATAC_10x_pbmc_analysis-paired.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../test/ATAC_10x_pbmc_analysis-paired.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../test/human_embryo_integration.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../test/human_embryo_integration.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,6 +32,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Jupyter Notebook" />
         <option value="Python Script" />
       </list>
     </option>
@@ -63,21 +66,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Kevin/Desktop/Garfield/Garfield&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/Kevin/Desktop/Garfield/Garfield",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\Kevin\Desktop\Garfield\Garfield\model" />
@@ -97,6 +105,127 @@
       <visibility group="运行 pip 命令" flag="true" />
       <visibility group="运行配置" flag="true" />
     </myKeys>
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="DjangoTestsConfigurationType">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="TARGET" value="" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="ADDITIONAL_ARGS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Python.FlaskServer">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="launchJavascriptDebuger" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Tox" factoryName="Tox">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Docutils task">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Sphinx task">
+      <module name="Garfield" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -121,6 +250,12 @@
       <workItem from="1716541236991" duration="79785000" />
       <workItem from="1717580751088" duration="41912000" />
       <workItem from="1717680547656" duration="198000" />
+      <workItem from="1717682787478" duration="139290000" />
+      <workItem from="1718082374126" duration="66201000" />
+      <workItem from="1718347503727" duration="79296000" />
+      <workItem from="1718778188134" duration="1157000" />
+      <workItem from="1718781157312" duration="9284000" />
+      <workItem from="1718791057571" duration="118739000" />
     </task>
     <servers />
   </component>

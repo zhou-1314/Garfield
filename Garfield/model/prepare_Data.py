@@ -31,7 +31,7 @@ from ._utils import Transfer_scData
 
 
 class UserDataset(InMemoryDataset):
-    def __init__(self, root, project_name, adata_list, profile, data_type=None, weight=None, genome=None, sample_col='batch',
+    def __init__(self, root, project_name, adata_list, profile, projection=False, data_type=None, weight=None, genome=None, sample_col='batch',
                  filter_cells_rna=False, min_features=100, min_cells=3, keep_mt=False, use_top_pcs=False,
                  use_gene_weigt=True, normalize=True, target_sum=1e4, used_hvg=True, used_scale=True,
                  single_n_top_genes=2000, rna_n_top_features=3000, atac_n_top_features=10000,
@@ -51,6 +51,8 @@ class UserDataset(InMemoryDataset):
             List of AnnData objects representing different batches of data.
         profile : str
             Type of data profile, e.g., 'RNA', 'ATAC', 'multi-modal'.
+        projection : bool
+            Use for new dataset projection. Input the folder containing the pre-trained model. If False, don't do projection. Default: False.
         data_type : str, optional
             Type of multi-modal data, e.g., 'Paired', 'UnPaired'. Default is None.
         genome : str, optional
@@ -110,6 +112,7 @@ class UserDataset(InMemoryDataset):
         self.name = project_name
         self.data_list = adata_list
         self.profile = profile
+        self.projection = projection
         self.data_type = data_type
         self.weight = weight
         self.genome = genome
@@ -331,7 +334,7 @@ class UserDataset(InMemoryDataset):
 
             return meta_adata_sub_list  # , labels
 
-    def construct_graphs(self, sub_adata_list, used_hvg=True, n_top_genes=2000, n_pcs=20,
+    def construct_metacell(self, sub_adata_list, used_hvg=True, n_top_genes=2000, n_pcs=20,
                          n_neighbors=15, metacell_size=2, metacell=True, randomized_svd=False, svd_runs=1,
                          metric='correlation', resolution_tol=0.1, leiden_runs=1,
                          leiden_seed=None, svd_solver='arpack', verbose=True):
@@ -340,18 +343,8 @@ class UserDataset(InMemoryDataset):
 
         Parameters
         ----------
-        n_neighbors1: int, default=15
-            Number of neighbors for graph construction for arr1.
-        n_neighbors2: int, default=15
-            Number of neighbors for graph construction for arr2.
-        svd_components1: None or int, default=None
-            If not None, perform SVD to reduce the dimension of self.active_arr1 before doing neighborhood search.
-        svd_components2
-            If not None, perform SVD to reduce the dimension of self.active_arr2 before doing neighborhood search.
-        resolution1: int, default=1
-            Resolution parameter for Leiden algorithm when clustering the graphs for arr1.
-        resolution2: int, default=1
-            Resolution parameter for Leiden algorithm when clustering the graphs for arr2.
+        n_neighbors: int, default=15
+            Number of neighbors for graph construction for arr.
         randomized_svd: bool, default=False
             Whether to perform randomized SVD.
         svd_runs: int, default=1
@@ -373,7 +366,7 @@ class UserDataset(InMemoryDataset):
         """
         self.metacell_size = metacell_size
         if self.metacell_size > 1:
-            ## single cell clustering
+            # single cell clustering
             # need to construct the graph + metacell merging
             metacell_labels = self._cluster_graphs(sub_adata_list=sub_adata_list, metacell_labels=None,
                                                    n_top_genes=n_top_genes, used_hvg=used_hvg,
@@ -385,7 +378,7 @@ class UserDataset(InMemoryDataset):
                                                    leiden_runs=leiden_runs, leiden_seed=leiden_seed,
                                                    svd_solver=svd_solver, verbose=verbose
                                                    )
-            ## meta cell scRNA constrution
+            # meta cell scRNA constrution
             meta_adata_sub_list = self._cluster_graphs(
                 sub_adata_list=sub_adata_list, metacell_labels=metacell_labels, used_hvg=used_hvg,
                 n_top_genes=n_top_genes, n_pcs=n_pcs, n_neighbors=n_neighbors,
@@ -398,7 +391,7 @@ class UserDataset(InMemoryDataset):
         return meta_adata_sub_list
 
     def process(self):
-        ### load data
+        # load data
         adata = concat_data(
             self.data_list,
             batch_categories=None,
@@ -407,24 +400,28 @@ class UserDataset(InMemoryDataset):
             index_unique=None,
             save=None
         )
+        if isinstance(adata, sc.AnnData):
+            if adata.X.max() < 50:
+                print('Warning: adata.X may have already been normalized, adata.X must be `counts`, please check.')
+            else:
+                adata.layers['counts'] = adata.X.copy()
+        elif isinstance(adata, mu.MuData):
+            if adata.mod['rna'].X.max() < 50:
+                print('Warning: adata.X may have already been normalized, adata.X must be `counts`, please check.')
+            else:
+                adata.mod['rna'].layers['counts'] = adata.mod['rna'].X.copy()
 
-        ### sc.AnnData
+        # sc.AnnData
         if isinstance(adata, sc.AnnData):
             rna_adata = adata.copy()
             del adata
-            ## 确保输入的矩阵为 counts
-            try:
-                rna_adata.X = rna_adata.layers['counts'].copy()
-            except KeyError:
-                # 如果 counts 层不存在，则抛出 ValueError 异常
-                raise ValueError("Please run `adata.layers['counts'] = adata.X.copy()`")
 
             if self.metacell and self.metacell_size > 1:
-                ## 根据样本为单位进行预处理
+                # 根据样本为单位进行预处理
                 sub_adata_list = self.process_sample(rna_adata)
-                ## 进行图构建+聚类，返回每个metacell的单细胞对象
-                ## 注意如果used_hvg为True，则只用高变异基因构建图
-                metacell_adata_list = self.construct_graphs(
+                # 进行图构建+聚类，返回每个metacell的单细胞对象
+                # 注意如果used_hvg为True，则只用高变异基因构建图
+                metacell_adata_list = self.construct_metacell(
                     sub_adata_list, used_hvg=self.used_hvg, n_top_genes=self.single_n_top_genes, n_pcs=self.n_pcs,
                     n_neighbors=self.n_neighbors, metacell_size=self.metacell_size, metacell=self.metacell,
                     metric=self.metric, resolution_tol=self.resolution_tol, leiden_runs=self.leiden_runs,
@@ -435,7 +432,7 @@ class UserDataset(InMemoryDataset):
                 rna_adata = rna_adata.copy()
 
             ## 预处理
-            rna_adata = preprocessing(
+            _, rna_adata_hvg = preprocessing(
                 rna_adata,
                 profile=self.profile,
                 data_type=self.data_type,
@@ -454,12 +451,12 @@ class UserDataset(InMemoryDataset):
                 keep_mt=self.keep_mt
             )
 
-            ## 保存rna_adata结果，用于模型输入
+            # 保存rna_adata结果，用于模型输入
             path = osp.join(self.processed_dir, f'{self.name}_merged_adata.pt')
-            torch.save(rna_adata, path, pickle_protocol=4)
+            torch.save(rna_adata_hvg, path, pickle_protocol=4)
 
-            ## 构建 pytorch_geometric 的数据结构
-            data = Transfer_scData(rna_adata, self.sample_col)
+            # 构建 pytorch_geometric 的数据结构
+            data = Transfer_scData(rna_adata_hvg, self.sample_col)
 
         ### mu.MuData
         elif isinstance(adata, mu.MuData):
@@ -467,19 +464,12 @@ class UserDataset(InMemoryDataset):
             atac_adata = adata.mod['atac'].copy()
             del adata
 
-            ## 确保输入的矩阵为 counts
-            try:
-                rna_adata.X = rna_adata.layers['counts'].copy()
-            except KeyError:
-                # 如果 counts 层不存在，则抛出 ValueError 异常
-                raise ValueError("Please run `adata.layers['counts'] = adata.X.copy()`")
-
             if self.metacell and self.metacell_size > 1:
                 ## 根据样本为单位进行预处理
                 sub_adata_list = self.process_sample(rna_adata)
                 ## 进行图构建+聚类，返回每个metacell的单细胞对象
                 ## 注意如果used_hvg为True，则只用高变异基因构建图
-                metacell_adata_list = self.construct_graphs(
+                metacell_adata_list = self.construct_metacell(
                     sub_adata_list, used_hvg=self.used_hvg, n_top_genes=self.single_n_top_genes, n_pcs=self.n_pcs,
                     n_neighbors=self.n_neighbors, metacell_size=self.metacell_size, metacell=self.metacell,
                     metric=self.metric, resolution_tol=self.resolution_tol, leiden_runs=self.leiden_runs,
@@ -489,7 +479,7 @@ class UserDataset(InMemoryDataset):
             else:
                 rna_adata = rna_adata.copy()
 
-                mdata = MuData({"rna": rna_adata, "atac": atac_adata})
+            mdata = MuData({"rna": rna_adata, "atac": atac_adata})
 
             ## 预处理
             merged_adata = preprocessing(
@@ -508,7 +498,6 @@ class UserDataset(InMemoryDataset):
                 n=self.n_neighbors,
                 batch_key=self.sample_col,
                 metric=self.metric,
-                method=self.method,
                 svd_solver=self.svd_solver,
                 keep_mt=self.keep_mt
             )

@@ -16,6 +16,7 @@ from sklearn.preprocessing import MaxAbsScaler
 
 # from ._pca import select_pcs_features
 from ._utils import gene_scores, TFIDF_LSI
+from .adj_construction import create_adj
 
 CHUNK_SIZE = 20000
 
@@ -48,6 +49,10 @@ def batch_scale(adata, use_rep='X', batch_key='batch', chunk_size=CHUNK_SIZE):
 
     return adata
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def reindex(adata, genes):
     """
     Reindex AnnData with gene list
@@ -63,6 +68,29 @@ def reindex(adata, genes):
     ------
     AnnData
     """
+    # Warning for gene percentage
+    user_var_names = adata.var_names
+    user_var_names = user_var_names.astype(str)
+    try:
+        percentage = (len(user_var_names.intersection(genes)) / len(user_var_names)) * 100
+        percentage = round(percentage, 4)
+        if percentage != 100:
+            logger.warning(f"WARNING: Query shares {percentage}% of its genes with the reference."
+                           "This may lead to inaccuracy in the results.")
+    except Exception:
+        logger.warning("WARNING: Something is wrong with the reference genes.")
+
+    # Get genes in reference that are not in query
+    ref_genes_not_in_query = []
+    for name in genes:
+        if name not in user_var_names:
+            ref_genes_not_in_query.append(name)
+
+    if len(ref_genes_not_in_query) > 0:
+        print("Query data is missing expression data of ",
+              len(ref_genes_not_in_query),
+              " genes which were contained in the reference dataset.")
+
     idx = [i for i, g in enumerate(genes) if g in adata.var_names]
     print('There are {} gene in selected genes'.format(len(idx)))
     if len(idx) == len(genes):
@@ -80,6 +108,7 @@ def preprocessing_rna(
         min_cells: int = 3,
         target_sum: int = 10000,
         used_hvgs: bool = True,
+        used_pca_graph: bool = False,
         rna_n_top_features=2000,  # or gene list
         n: int = 15,
         batch_key: str = 'batch',
@@ -136,42 +165,46 @@ def preprocessing_rna(
         # Log1p transforming
         sc.pp.log1p(adata)
 
+    # Finding variable features for RNA adata
+    adata_hvg = adata.copy()
+    if used_hvgs:
+        if type(rna_n_top_features) == int:
+            if rna_n_top_features > len(adata_hvg.var_names):
+                rna_n_top_features = len(adata_hvg.var_names)
+            if batch_key is not None:
+                sc.pp.highly_variable_genes(adata_hvg, n_top_genes=rna_n_top_features, batch_key=batch_key)
+            else:
+                sc.pp.highly_variable_genes(adata_hvg, n_top_genes=rna_n_top_features)
+                # sc.pp.highly_variable_genes(adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
+            adata_hvg = adata_hvg[:, adata_hvg.var.highly_variable].copy()
+        elif type(rna_n_top_features) != int:
+            if isinstance(rna_n_top_features, str):
+                if os.path.isfile(rna_n_top_features):
+                    rna_n_top_features = np.loadtxt(rna_n_top_features, dtype=str)
+            adata_hvg = reindex(adata_hvg, rna_n_top_features)
+
     # scale data, clip values exceeding standard deviation 10.
-    if adata.X.min() < 0:
-        print('Warning: adata.X may have already been scaled, do not scale, please check.')
-    else:
-        sc.pp.scale(adata, max_value=10)
+    # if adata.X.min() < 0:
+    #     print('Warning: adata.X may have already been scaled, do not scale, please check.')
+    # else:
+    #     sc.pp.scale(adata, max_value=10)
+    # PCA
+    sc.tl.pca(adata_hvg, svd_solver=svd_solver)
 
-    adata.raw = adata
-    # Finding variable features
-    if type(rna_n_top_features) == int and used_hvgs:
-        if rna_n_top_features > len(adata.var_names):
-            rna_n_top_features = len(adata.var_names)
-        if batch_key is not None:
-            sc.pp.highly_variable_genes(adata, n_top_genes=rna_n_top_features, batch_key=batch_key)
-        else:
-            sc.pp.highly_variable_genes(adata, n_top_genes=rna_n_top_features)
-            #sc.pp.highly_variable_genes(adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
-        adata = adata[:, adata.var.highly_variable].copy()
-    elif type(rna_n_top_features) != int:
-        if isinstance(rna_n_top_features, str):
-            if os.path.isfile(rna_n_top_features):
-                rna_n_top_features = np.loadtxt(rna_n_top_features, dtype=str)
-        adata = reindex(adata, rna_n_top_features)
+    if used_pca_graph:
+        # use scanpy functions to do the graph construction
+        sc.pp.neighbors(adata_hvg, n_neighbors=n, metric=metric, use_rep='X_pca')
 
-    ## PCA
-    sc.tl.pca(adata, svd_solver=svd_solver)
-
-    # use scanpy functions to do the graph construction
-    sc.pp.neighbors(adata, n_neighbors=n, metric=metric, use_rep='X_pca')
-
-    return adata
+    return adata, adata_hvg
 
 def preprocessing_atac(adata: AnnData,
                        data_type: str = None,
                        genome: str = None,
                        use_gene_weigt: bool = True,
                        use_top_pcs: bool = False,
+                       used_binarize: bool = False,
+                       used_hvgs: bool = True,
+                       used_lsi_graph: bool = False,
                        min_features: int = 100,
                        min_cells: int = 3,
                        atac_n_top_features=100000,  # or gene list
@@ -193,48 +226,43 @@ def preprocessing_atac(adata: AnnData,
     if atac_n_top_features is None: atac_n_top_features = 100000
 
     # Preprocessing
-    if type(adata.X) != csr.csr_matrix:
-        adata.X = scipy.sparse.csr_matrix(adata.X)
+    # if type(adata.X) != csr.csr_matrix:
+    #     adata.X = scipy.sparse.csr_matrix(adata.X)
 
     sc.pp.filter_cells(adata, min_genes=min_features)
     sc.pp.filter_genes(adata, min_cells=min_cells)
-    # epi.pp.filter_cells(adata, min_features=min_features)
-    # epi.pp.filter_features(adata, min_cells=min_cells)
-    adata.raw = adata
+    sc.pp.normalize_total(adata)
+    # adata.raw = adata
 
     ## TFIDF & LSI
-    TFIDF_LSI(adata, n_comps=n_components, binarize=False, random_state=0)
+    TFIDF_LSI(adata, n_comps=n_components, binarize=used_binarize, random_state=0)
 
-    # use scanpy functions to do the graph construction
-    sc.pp.neighbors(adata, n_neighbors=n, metric=metric, use_rep='X_lsi')
-
-    ## gene_scores convert peak to gene names
-    if data_type == 'UnPaired' and genome is not None:
-        ## 先将 scATAC 转换为基因活性矩阵
-        print('Convert peak to gene activity matrix, please wait.')
-        print('`genome` parameter should be set correctly')
-        print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}")
-        adata = gene_scores(adata, genome=genome, use_gene_weigt=use_gene_weigt, use_top_pcs=use_top_pcs)
+    if used_lsi_graph:
+        # use scanpy functions to do the graph construction
+        sc.pp.neighbors(adata, n_neighbors=n, metric=metric, use_rep='X_lsi')
 
     ## HVP
-    if type(atac_n_top_features) == int and atac_n_top_features > 0 and atac_n_top_features < adata.shape[1]:
-        sc.pp.highly_variable_genes(adata, n_top_genes=atac_n_top_features, batch_key=batch_key,
-                                    inplace=False, subset=True)
-        # adata = epi.pp.select_var_feature(adata, nb_features=atac_n_top_features, show=False, copy=True)
-    elif type(atac_n_top_features) != int:
-        if isinstance(atac_n_top_features, str):
-            if os.path.isfile(atac_n_top_features):
-                atac_n_top_features = np.loadtxt(atac_n_top_features, dtype=str)
-        adata = reindex(adata, atac_n_top_features)
+    adata_hvg = adata.copy()
+    if used_hvgs:
+        if type(atac_n_top_features) == int and atac_n_top_features > 0 and atac_n_top_features < adata_hvg.shape[1]:
+            sc.pp.highly_variable_genes(adata_hvg, n_top_genes=atac_n_top_features, batch_key=batch_key,
+                                        inplace=False, subset=True)
+        elif type(atac_n_top_features) != int:
+            if isinstance(atac_n_top_features, str):
+                if os.path.isfile(atac_n_top_features):
+                    atac_n_top_features = np.loadtxt(atac_n_top_features, dtype=str)
+            adata_hvg = reindex(adata_hvg, atac_n_top_features)
 
-    return adata
+    return adata, adata_hvg
+
 
 ### preprocessing main function
 def preprocessing(
         adata: [AnnData, MuData],
         profile: str = 'RNA',
         data_type: str = 'Paired',
-        weight = 0.5,
+        batch_key: str = 'batch',
+        weight = 0.8,
         genome: str = None,
         use_gene_weigt: bool = True,
         use_top_pcs: bool = False,
@@ -243,14 +271,23 @@ def preprocessing(
         target_sum: int = None,
         rna_n_top_features=None,  # or gene list
         atac_n_top_features=None,  # or gene list
+        svd_components_rna: int = 30,
+        svd_components_atac: int = 30,
+        cca_components: int = 20,
+        cca_max_iter: int = 2000,
+        randomized_svd: bool = False,
+        filter_prop_initial: int = 0,
+        filter_prop_refined: int = 0.3,
+        filter_prop_propagated: int = 0,
+        n_iters: int = 1,
+        svd_runs: int = 1,
         n: int = 15,
-        batch_key: str = 'batch',
         metric: str = 'euclidean',
-        method: str = 'umap',
         svd_solver: str = 'arpack',
         n_components: int = 50,
         keep_mt: bool = False,
-        backed: bool = False
+        backed: bool = False,
+        verbose: bool = True
 ):
     """
     Preprocessing single-cell data
@@ -284,6 +321,7 @@ def preprocessing(
             min_cells=min_cells,
             target_sum=target_sum,
             used_hvgs=True,
+            used_pca_graph=True,
             rna_n_top_features=rna_n_top_features,
             n=n,
             batch_key=batch_key,
@@ -297,6 +335,8 @@ def preprocessing(
             adata,
             min_features=min_features,
             min_cells=min_cells,
+            used_hvgs=True,
+            used_lsi_graph=True,
             atac_n_top_features=atac_n_top_features,
             n=n,
             batch_key=batch_key,
@@ -304,16 +344,19 @@ def preprocessing(
             n_components=n_components
         )
     elif profile == 'multi-modal':
+        # UnPaired TO DO
         assert data_type in ['Paired', 'UnPaired'], 'Data_type must be "Paired", or "UnPaired".'
         rna_adata = adata.mod['rna']
         atac_adata = adata.mod['atac']
 
         if data_type == 'Paired':
-            rna_adata = preprocessing_rna(
+            rna_adata, rna_adata_hvg = preprocessing_rna(
                 rna_adata,
                 min_features=min_features,
                 min_cells=min_cells,
                 target_sum=target_sum,
+                used_hvgs=True,
+                used_pca_graph=True,
                 rna_n_top_features=rna_n_top_features,
                 n=n,
                 batch_key=batch_key,
@@ -322,11 +365,13 @@ def preprocessing(
                 keep_mt=keep_mt,
                 backed=backed,
             )
-            atac_adata = preprocessing_atac(
+            atac_adata, atac_adata_hvg = preprocessing_atac(
                 atac_adata,
                 data_type,
                 min_features=min_features,
                 min_cells=min_cells,
+                used_hvgs=True,
+                used_lsi_graph=True,
                 atac_n_top_features=atac_n_top_features,
                 n=n,
                 batch_key=batch_key,
@@ -334,7 +379,7 @@ def preprocessing(
                 n_components=n_components
             )
             ## Concatenating different modalities
-            adata_paired = ad.concat([rna_adata, atac_adata], axis=1)
+            adata_paired = ad.concat([rna_adata_hvg, atac_adata_hvg], axis=1)
 
             ## the .obs layer is empty now, and we need to repopulate it
             rna_cols = rna_adata.obs.columns
@@ -346,120 +391,47 @@ def preprocessing(
             atacobs.columns = ["atac:" + x for x in atac_cols]
             adata_paired.obs = pd.merge(rnaobs, atacobs, left_index=True, right_index=True)
 
+            ## 先将 scATAC 转换为基因活性矩阵
+            print('Convert peak to gene activity matrix, please wait.', flush=True)
+            print('`genome` parameter should be set correctly', flush=True)
+            print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}", flush=True)
+            adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weigt=use_gene_weigt, use_top_pcs=use_top_pcs)
+
+            ## 交集
+            common_genes = set(rna_adata.var_names).intersection(set(adata_CG_atac.var_names))
+            print('There are {} common genes in RNA and ATAC datasets'.format(len(common_genes)))
+            rna_adata_shared = rna_adata[:, list(common_genes)]
+            atac_adata_shared = adata_CG_atac[:, list(common_genes)]
+
+            # 通过cell matching 构建组学间的图结构
+            print('To start performing cell matching for adjacency matrix of the graph, please wait...', flush=True)
+            # adata_paired.obsp['connectivities']
+            inter_connect = create_adj(rna_adata, atac_adata, rna_adata_shared, atac_adata_shared,
+                                                             data_type=data_type,
+                                                             rna_n_top_features=rna_n_top_features,
+                                                             atac_n_top_features=atac_n_top_features,
+                                                             batch_key=batch_key, svd_components1=svd_components_rna,
+                                                             svd_components2=svd_components_atac,
+                                                             cca_components=cca_components, cca_max_iter=cca_max_iter,
+                                                             randomized_svd=randomized_svd,
+                                                             filter_prop_initial=filter_prop_initial,
+                                                             filter_prop_refined=filter_prop_refined,
+                                                             filter_prop_propagated=filter_prop_propagated,
+                                                             n_iters=n_iters, svd_runs=svd_runs, verbose=verbose)
+
             # 你可以在一个字典中保留原始的.obsp数据
             # 设置权重
-            w = weight #0.8  # 你可以根据实际需要调整这个权重
+            # w = weight #0.8  # 你可以根据实际需要调整这个权重
             # Iterate over keys in rna_obsp (assuming atac_obsp has the same keys)
-            for key in rna_adata.obsp.keys():
+            for key in rna_adata_hvg.obsp.keys():
                 # 计算加权平均的连通性矩阵
-                combined_obsp = w * rna_adata.obsp[key] + (1 - w) * atac_adata.obsp[key]
-                adata_paired.obsp[key + '_combined'] = combined_obsp
+                intra_connect = weight * rna_adata_hvg.obsp[key] + (1 - weight) * atac_adata_hvg.obsp[key]
+                # adata_paired.obsp[key + '_combined'] = combined_obsp
 
+            adata_paired.obsp['connectivities'] = inter_connect + intra_connect
             # adata_paired.uns['obsp_rna'] = rna_adata.obsp
             # adata_paired.uns['obsp_atac'] = atac_adata.obsp
-            ## PCA
-            # sc.tl.pca(adata_paired, svd_solver=svd_solver)
 
-            # # use scanpy functions to do the graph construction
-            # sc.pp.neighbors(adata_paired, n_neighbors=n, metric=metric, use_rep='X_pca')
             return adata_paired
-
-        elif data_type == 'UnPaired':
-            rna_adata = preprocessing_rna(
-                rna_adata,
-                min_features=min_features,
-                min_cells=min_cells,
-                target_sum=target_sum,
-                rna_n_top_features=rna_n_top_features,
-                n=n,
-                batch_key=batch_key,
-                metric=metric,
-                svd_solver=svd_solver,
-                keep_mt=keep_mt,
-                backed=backed,
-            )
-            atac_adata = preprocessing_atac(
-                atac_adata,
-                data_type,
-                genome,
-                use_gene_weigt,
-                use_top_pcs,
-                min_features=min_features,
-                min_cells=min_cells,
-                atac_n_top_features=atac_n_top_features,
-                n=n,
-                batch_key=batch_key,
-                metric=metric,
-                n_components=n_components
-            )
-            ## Concatenate datasets, by modality
-            adata_unpaired = ad.concat([rna_adata, atac_adata], axis=0, join="outer")
-
-            ## the .obs layer is empty now, and we need to repopulate it
-            # rna_cols = rna_adata.obs.columns
-            # atac_cols = atac_adata.obs.columns
-
-            rnaobs = rna_adata.obs.copy()
-            # rnaobs.columns = ["rna:" + x for x in rna_cols]
-            atacobs = atac_adata.obs.copy()
-            # atacobs.columns = ["atac:" + x for x in atac_cols]
-            # adata_unpaired.obs = pd.merge(rnaobs, atacobs, left_index=True, right_index=True)
-            adata_unpaired.obs = pd.concat([rnaobs, atacobs], axis=0, join='outer')
-
-            # 图结构
-            # Since `obsp` are dictionaries of matrices, we need to handle them accordingly.
-            # We'll assume rna_obsp and atac_obsp have the same type of keys (e.g., 'connectivities' or 'distances')
-            # and that the matrices are in a compatible format for concatenation.
-            # Create a new obsp dictionary to store the concatenated matrices.
-            adata_unpaired_obsp = {}
-
-            # Iterate over keys in rna_obsp (assuming atac_obsp has the same keys)
-            for key in rna_adata.obsp.keys():
-                rna_rows, rna_cols = rna_adata.obsp[key].shape
-                atac_rows, atac_cols = atac_adata.obsp[key].shape
-                total_cols = rna_cols + atac_cols
-
-                # 为列数较小的矩阵扩展零列，以匹配较大的列数
-                if rna_cols < total_cols:
-                    rna_matrix = scipy.sparse.hstack(
-                        [rna_adata.obsp[key], scipy.sparse.csr_matrix((rna_rows, total_cols - rna_cols))])
-                if atac_cols < total_cols:
-                    atac_matrix = scipy.sparse.hstack(
-                        [atac_adata.obsp[key], scipy.sparse.csr_matrix((atac_rows, total_cols - atac_cols))])
-
-                # 现在垂直堆叠调整后的矩阵
-                concatenated_matrix = scipy.sparse.vstack([rna_matrix, atac_matrix])
-
-                # Adding the concatenated matrix to adata_unpaired.obsp
-                adata_unpaired_obsp[key] = concatenated_matrix
-
-            # Assign the newly created obsp dictionary to the adata_unpaired object
-            adata_unpaired.obsp = adata_unpaired_obsp
-
-            ## HVP
-            # if type(rna_n_top_features) == int and rna_n_top_features > 0 and rna_n_top_features < adata_unpaired.shape[1]:
-            #     sc.pp.highly_variable_genes(adata_unpaired, n_top_genes=rna_n_top_features, batch_key=batch_key,
-            #                                 inplace=False, subset=True)
-            #     # adata = epi.pp.select_var_feature(adata, nb_features=atac_n_top_features, show=False, copy=True)
-            # elif type(rna_n_top_features) != int:
-            #     if isinstance(rna_n_top_features, str):
-            #         if os.path.isfile(rna_n_top_features):
-            #             rna_n_top_features = np.loadtxt(rna_n_top_features, dtype=str)
-            #     adata_unpaired = reindex(adata_unpaired, rna_n_top_features)
-
-            ##
-            # 你可以在一个字典中保留原始的.obsp数据
-            # adata_unpaired.uns['obsp_rna'] = rna_adata.obsp
-            # adata_unpaired.uns['obsp_atac'] = atac_adata.obsp
-
-            ## PCA
-            # sc.tl.pca(adata_unpaired, svd_solver=svd_solver)
-
-            ## min-max scaling
-            # adata_unpaired = batch_scale(adata_unpaired, use_rep='X', batch_key=batch_key, chunk_size=CHUNK_SIZE)
-
-            # use scanpy functions to do the graph construction
-            # sc.pp.neighbors(adata_unpaired, n_neighbors=n, metric=metric, use_rep='X_pca')
-            return adata_unpaired
     else:
         raise ValueError("Not support profile: `{}` yet".format(profile))

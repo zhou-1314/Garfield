@@ -114,7 +114,7 @@ class GarfieldConfig:
             'adata_list': ['test.h5ad'],
             'profile': 'RNA',
             'data_type': None,
-            'weight': 0.5,
+            'weight': 0.8,
             'genome': None,
             'sample_col': None,
 
@@ -160,10 +160,10 @@ class GarfieldConfig:
             'test_split': 0.1,
             'val_split': 0.1,
             'batch_size': 128,
+            'loader_type': 'graphsaint',
             'num_neighbors': [3, 3],
             'epochs': 50,
             'dropout': 0.2,
-            'mod_temperature': 0.6,  ## RNA
             'mmd_temperature': 0.2,
             'instance_temperature': 1.0,
             'cluster_temperature': 0.5,
@@ -175,6 +175,8 @@ class GarfieldConfig:
             'weight_decay': 1e-05,
 
             # Other options
+            'projection': False,
+            'impute': False,
             'outdir': None,
             'load': False
         }
@@ -192,11 +194,11 @@ class GarfieldConfig:
         if config['profile'] == 'multi-modal':
             assert config['data_type'] in ['Paired', 'UnPaired'], \
                 'The `data_type` should be set as one of the `Paired`, `UnPaired`.'
-            if config['data_type'] == 'UnPaired' and config['genome'] is not None:
+            if config['genome'] is not None:
                 assert (config['genome'] in ['hg19', 'hg38', 'mm9', 'mm10']), \
                     "`genome` must be one of ['hg19','hg38','mm9','mm10']"
-        assert config['conv_type'] in ['GAT', 'GCN'], \
-            'The current model only supports `GAT` or `GCN` layers.'
+        assert config['conv_type'] in ['GAT','GATv2Conv', 'GCN'], \
+            'The current model only supports `GAT`, `GATv2Conv` or `GCN` layers.'
 
         self.gf_params = config
 

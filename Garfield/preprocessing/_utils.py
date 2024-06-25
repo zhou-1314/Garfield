@@ -11,10 +11,12 @@ from scipy.sparse import (
     coo_matrix,
     diags,
 )
-from sklearn.neighbors import KDTree
 from collections import defaultdict, Counter
 from pandas.api.types import is_numeric_dtype
 from sklearn.feature_extraction.text import TfidfTransformer
+from scipy.sparse.linalg import svds
+from sklearn.cross_decomposition import CCA
+from sklearn.utils.extmath import randomized_svd
 
 
 def get_centroids(sub_data, labels):
@@ -122,24 +124,272 @@ def summarize_clustering(clustering, curr_label, true_labels):
 
     return res
 
-# def cal_tf_idf(mat):
-#     """Transform a count matrix to a tf-idf representation
-#     """
-#     mat = csr_matrix(mat)
-#     tf = csr_matrix(mat/(mat.sum(axis=0)))
-#     idf = np.array(np.log(1 + mat.shape[1] / mat.sum(axis=1))).flatten()
-#     tf_idf = csr_matrix(np.dot(diags(idf), tf))
-#     return tf_idf
 
-# def tfidf(count_mat):
-#     """
-#     Perform TF-IDF transformation.
-#     """
-#     model = TfidfTransformer(smooth_idf=False, norm="l2")
-#     model = model.fit(np.transpose(count_mat))
-#     model.idf_ -= 1
-#     tf_idf = np.transpose(model.transform(np.transpose(count_mat))).astype(np.float32)
-#     return csr_matrix(tf_idf)
+def cdist_correlation(arr1, arr2):
+    """Calculate pair-wise 1 - Pearson correlation between X and Y.
+
+    Parameters
+    ----------
+    arr1: np.array of shape (n_samples1, n_features)
+        First dataset.
+    arr2: np.array of shape (n_samples2, n_features)
+        Second dataset.
+
+    Returns
+    -------
+    array-like of shape (n_samples1, n_samples2)
+        The (i, j)-th entry is 1 - Pearson correlation between i-th row of arr1 and j-th row of arr2.
+    """
+    n, p = arr1.shape
+    m, p2 = arr2.shape
+    assert p2 == p
+
+    arr1 = (arr1.T - np.mean(arr1, axis=1)).T
+    arr2 = (arr2.T - np.mean(arr2, axis=1)).T
+
+    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1 ** 2, axis=1))).T
+    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2 ** 2, axis=1))).T
+
+    return 1 - arr1 @ arr2.T
+
+def convert_to_numpy(arr):
+    if isinstance(arr, csr_matrix):
+        return arr.toarray()
+    elif isinstance(arr, np.ndarray):
+        return arr
+    else:
+        raise TypeError("Unsupported data type.")
+
+def drop_zero_variability_columns(arr_lst: list, tol=1e-8):
+    """
+    Drop columns for which its standard deviation is zero in any one of the arrays in arr_list.
+
+    Parameters
+    ----------
+    arr_lst: list of np.array
+        List of arrays
+    tol: float, default=1e-8
+        Any number less than tol is considered as zero
+
+    Returns
+    -------
+    List of np.array where no column has zero standard deviation
+    """
+    bad_columns = set()
+    for arr in arr_lst:
+        curr_std = np.std(arr, axis=0)
+        for col in np.nonzero(np.abs(curr_std) < tol)[0]:
+            bad_columns.add(col)
+    good_columns = [i for i in range(arr_lst[0].shape[1]) if i not in bad_columns]
+    return [arr[:, good_columns] for arr in arr_lst]
+
+
+def robust_svd(arr, n_components, randomized=False, n_runs=1):
+    """
+    Do deterministic or randomized SVD on arr.
+
+    Parameters
+    ----------
+    arr: np.array
+        The array to do SVD on
+    n_components: int
+        Number of SVD components
+    randomized: bool, default=False
+        Whether to run randomized SVD
+    n_runs: int, default=1
+        Run multiple times and take the realization with the lowest Frobenious reconstruction error
+
+    Returns
+    -------
+    u, s, vh: np.array
+        u @ np.diag(s) @ vh is the reconstruction of the original arr
+    """
+    if randomized:
+        best_err = float('inf')
+        u, s, vh = None, None, None
+        for _ in range(n_runs):
+            curr_u, curr_s, curr_vh = randomized_svd(arr, n_components=n_components, random_state=None)
+            curr_err = np.sum((arr - curr_u @ np.diag(curr_s) @ curr_vh) ** 2)
+            if curr_err < best_err:
+                best_err = curr_err
+                u, s, vh = curr_u, curr_s, curr_vh
+        assert u is not None and s is not None and vh is not None
+    else:
+        if n_runs > 1:
+            warnings.warn("Doing deterministic SVD, n_runs reset to one.")
+        u, s, vh = svds(arr*1.0, k=n_components) # svds can not handle integer values
+    return u, s, vh
+
+def svd_denoise(arr, n_components=20, randomized=False, n_runs=1):
+    """
+    Compute best rank-n_components approximation of arr by SVD.
+
+    Parameters
+    ----------
+    arr: np.array of shape (n_samples, n_features)
+        Data matrix
+    n_components: int, default=20
+        Number of components to keep
+    randomized: bool, default=False
+        Whether to use randomized SVD
+    n_runs: int, default=1
+        Run multiple times and take the realization with the lowest Frobenious reconstruction error
+
+    Returns
+    -------
+    arr: array_like of shape (n_samples, n_features)
+        Rank-n_comopnents approximation of the input arr.
+    """
+    if n_components is None:
+        return arr
+    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    return u @ np.diag(s) @ vh
+
+def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
+    """
+    Compute rank-n_components SVD embeddings of arr.
+
+    Parameters
+    ----------
+    arr: np.array of shape (n_samples, n_features)
+        Data matrix
+    n_components: int, default=20
+        Number of components to keep
+    randomized: bool, default=False
+        Whether to use randomized SVD
+    n_runs: int, default=1
+        Run multiple times and take the realization with the lowest Frobenious reconstruction error
+
+    Returns
+    -------
+    embeddings: array_like of shape (n_samples, n_components)
+        Rank-n_comopnents SVD embedding of arr.
+    """
+    if n_components is None:
+        return arr
+    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    return u @ np.diag(s)
+
+
+
+def center_scale(arr):
+    """
+    Column-wise center and scale by standard deviation.
+
+    Parameters
+    ----------
+    arr: np.ndarray of shape (n_samples, n_features)
+
+    Returns
+    -------
+    Center and scaled version of arr.
+    """
+    return (arr - arr.mean(axis=0)) / arr.std(axis=0)
+
+
+def filter_bad_matches(matching, filter_prop=0.1):
+    """
+    Filter bad matches according to the distances of matched pairs.
+
+    Parameters
+    ----------
+    matching: list
+        rows, cols, vals = init_matching, where each matched pair is (rows[i], cols[i]),
+        and their distance is vals[i]
+    filter_prop: float
+        Matched pairs with distance in top filter_prop are discarded
+    Returns
+    -------
+    rows, cols, vals: list
+        Each matched pair of rows[i], cols[i], their distance is vals[i]
+    """
+    init_rows, init_cols, init_vals = matching
+    thresh = np.quantile(init_vals, 1 - filter_prop)
+    rows = []
+    cols = []
+    vals = []
+    for i, j, val in zip(init_rows, init_cols, init_vals):
+        if val < thresh:
+            rows.append(i)
+            cols.append(j)
+            vals.append(val)
+    return np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32), np.array(vals, dtype=np.float32)
+
+def pearson_correlation(arr1, arr2):
+    """Calculate the vector of pearson correlations between each row of arr1 and arr2.
+
+    Parameters
+    ----------
+    arr1: np.array of shape (n_samples, n_features)
+        First dataset.
+    arr2: np.array of shape (n_samples, n_features)
+        Second dataset.
+
+    Returns
+    -------
+    np.array of shape (n_samples,), the i-th entry is the pearson correlation between arr1[i, :] and arr2[i, :].
+    """
+    n, p = arr1.shape
+    m, p2 = arr2.shape
+    assert n == m and p2 == p
+
+    arr1 = (arr1.T - np.mean(arr1, axis=1)).T
+    arr2 = (arr2.T - np.mean(arr2, axis=1)).T
+
+    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1 ** 2, axis=1))).T
+    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2 ** 2, axis=1))).T
+
+    return np.sum(arr1 * arr2, axis=1)
+
+def cca_embedding(arr1, arr2, init_matching, filter_prop, n_components, max_iter=2000):
+    """
+    Filter bad matched pairs, align arr1 and arr2 using init_matching, fit CCA, and get CCA embeddings of arr1 and arr2.
+
+    Parameters
+    ----------
+    arr1: np.ndarray of shape (n_samples1, n_features1)
+        The first data matrix
+    arr2: np.ndarray of shape (n_samples2, n_features2)
+        The second data matrix
+    init_matching: list
+        rows, cols, vals = init_matching, where each matched pair is (rows[i], cols[i]),
+        and their distance is vals[i]
+    filter_prop: float
+        Matched pairs with distance in top filter_prop are discarded when fitting CCA
+    n_components: int
+        Number of components to keep when fitting CCA
+    max_iter: int, default=2000
+        Maximum number of iterations for CCA
+
+    Returns
+    -------
+    arr1_cca: np.array of shape (n_samples1, n_components)
+    arr2_cca: np.array of shape (n_samples2, n_components)
+    canonical_correlations: np.array of shape (n_components,)
+    """
+
+    # filter bad matched pairs
+    arr1_indices, arr2_indices, _ = filter_bad_matches(init_matching, filter_prop)
+
+    # align
+    arr1_aligned = arr1[arr1_indices, :]
+    arr2_aligned = arr2[arr2_indices, :]
+
+    # cca
+    cca = CCA(n_components=n_components, max_iter=max_iter)
+    cca.fit(arr1_aligned, arr2_aligned)
+    arr1_aligned_cca, arr2_aligned_cca = cca.transform(arr1_aligned, arr2_aligned)
+    arr1_aligned_cca = center_scale(arr1_aligned_cca)
+    arr2_aligned_cca = center_scale(arr2_aligned_cca)
+
+    canonical_correlations = np.corrcoef(
+        arr1_aligned_cca, arr2_aligned_cca, rowvar=False).diagonal(offset=n_components)
+    arr1_cca, arr2_cca = cca.transform(arr1, arr2)
+    arr1_cca = center_scale(arr1_cca)
+    arr2_cca = center_scale(arr2_cca)
+
+    return arr1_cca, arr2_cca, canonical_correlations
+
 
 
 def tfidf(X, n_components, binarize=True, random_state=0):
@@ -560,30 +810,6 @@ import warnings
 import numpy as np
 from scipy.sparse.linalg import svds
 from sklearn.utils.extmath import randomized_svd
-
-def drop_zero_variability_columns(arr_lst: list, tol=1e-8):
-    """
-    Drop columns for which its standard deviation is zero in any one of the arrays in arr_list.
-
-    Parameters
-    ----------
-    arr_lst: list of np.array
-        List of arrays
-    tol: float, default=1e-8
-        Any number less than tol is considered as zero
-
-    Returns
-    -------
-    List of np.array where no column has zero standard deviation
-    """
-    assert all([arr_lst[i].shape[1] == arr_lst[0].shape[1] for i in range(len(arr_lst))])
-    bad_columns = set()
-    for arr in arr_lst:
-        curr_std = np.std(arr, axis=0)
-        for col in np.nonzero(np.abs(curr_std) < tol)[0]:
-            bad_columns.add(col)
-    good_columns = [i for i in range(arr_lst[0].shape[1]) if i not in bad_columns]
-    return [arr[:, good_columns] for arr in arr_lst]
 
 def robust_svd(arr, n_components, randomized=False, n_runs=1):
     """

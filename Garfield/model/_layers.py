@@ -8,9 +8,9 @@ import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
 from torch.nn.functional import normalize
-from torch_geometric.utils import negative_sampling
+from torch_geometric.utils import (negative_sampling, remove_self_loops, add_self_loops)
 from torch_geometric.data import Data
-from torch_geometric.nn import GCNConv, GATConv
+from torch_geometric.nn import GCNConv, GATConv, GATv2Conv
 from torch_geometric.nn import GAE, InnerProductDecoder
 
 from ._utils import scipy_sparse_mat_to_torch_sparse_tensor, extract_subgraph
@@ -64,7 +64,7 @@ class DSBatchNorm(nn.Module):
 
 
 class GATEncoder(nn.Module):
-    def __init__(self, in_channels, hidden_dims, latent_dim, svd_q, num_heads,
+    def __init__(self, in_channels, hidden_dims, latent_dim, conv_type, svd_q, num_heads,
                  dropout, concat, num_domains='', used_edge_weight=False, used_DSBN=False):
         """
         Initializes the GATEncoder
@@ -100,7 +100,10 @@ class GATEncoder(nn.Module):
         self.used_edge_weight = used_edge_weight
         self.layers = nn.ModuleList()
         self.norm = nn.ModuleList()
-        GATLayer = GATConv
+        if conv_type == 'GAT':
+            GATLayer = GATConv
+        elif conv_type == 'GATv2Conv':
+            GATLayer = GATv2Conv
 
         num_hidden_layers = len(hidden_dims)
         num_heads_list = [num_heads] * num_hidden_layers
@@ -239,7 +242,7 @@ class GATEncoder(nn.Module):
 
 
 class GATDecoder(nn.Module):
-    def __init__(self, in_channels, hidden_dims, out_channels, num_heads, dropout, concat,
+    def __init__(self, in_channels, hidden_dims, out_channels, conv_type, num_heads, dropout, concat,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
         """
         Initializes the GATDecoder
@@ -274,7 +277,10 @@ class GATDecoder(nn.Module):
         self.layers = nn.ModuleList()
         self.norm = nn.ModuleList()
         self.dropout = dropout
-        GATLayer = GATConv
+        if conv_type == 'GAT':
+            GATLayer = GATConv
+        elif conv_type == 'GATv2Conv':
+            GATLayer = GATv2Conv
 
         num_hidden_layers = len(hidden_dims)
         num_heads_list = [num_heads] * num_hidden_layers
@@ -339,7 +345,6 @@ class GATDecoder(nn.Module):
                     else:
                         x = self.norm[idx](x)
                     x = F.relu(x)
-        #                 x = F.dropout(x, p=self.dropout, training=self.training)
 
         recon_x, _ = self.conv_recon(x, edge_index,
                                      edge_attr=edge_weight if self.used_edge_weight else None,
@@ -575,8 +580,10 @@ class GCNDecoder(nn.Module):
 # Based on VGAE class in PyTorch Geometric
 EPS = 1e-15
 MAX_LOGSTD = 10
-class GCNModelVAE(GAE):
-    def __init__(self, encoder, enc_in_channels, n_domain, args, decoder=None):
+class GNNModelVAE(GAE):
+    def __init__(self, encoder, bottle_neck_neurons, hidden_dims, feature_dim,
+                 num_heads, dropout, concat, n_domain, used_edge_weight, used_DSBN,
+                 used_recon_exp, conv_type, cluster_num, gnn_layer=2, decoder=None):
         """
         Initializes the GCNModelVAE
         Parameters
@@ -592,20 +599,25 @@ class GCNModelVAE(GAE):
         decoder : nn.Module, optional
             The decoder module used in the variational autoencoder. Defaults to `InnerProductDecoder` if not specified.
         """
-        super(GCNModelVAE, self).__init__(encoder, decoder)
+        super(GNNModelVAE, self).__init__(encoder, decoder)
         self.decoder = InnerProductDecoder() if decoder is None else decoder
 
-        self.args = args
-        self.used_recon_exp = args.used_recon_exp
-        self.l2_reg = args.l2_reg
-        self.feature_dim = enc_in_channels
+        self.latent = bottle_neck_neurons
+        self.hidden_dims = hidden_dims
+        self.feature_dim = feature_dim
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.concat = concat
         self.n_domain = n_domain
-        self.latent = args.bottle_neck_neurons
-        self.dropout = args.dropout
-        self.conv_type = args.conv_type
-        assert self.conv_type in ['GAT', 'GCN'], 'Convolution must be "GCN", or "GAT.'
-        self.cluster_num = args.cluster_num
-        self.gnn_layer = args.gnn_layer  ## 默认是 2
+        self.used_edge_weight = used_edge_weight
+        self.used_DSBN = used_DSBN
+
+        # model configurations
+        self.used_recon_exp = used_recon_exp
+        self.conv_type = conv_type
+        assert self.conv_type in ['GAT', 'GATv2Conv', 'GCN'], 'Convolution must be "GCN", "GAT" or "GATv2Conv".'
+        self.cluster_num = cluster_num
+        self.gnn_layer = gnn_layer
         # 使用 Xavier 初始化权重
         self.eps_weight = nn.Parameter(nn.init.xavier_uniform_(torch.empty(self.latent, self.latent)))
         self.eps_bias = nn.Parameter(torch.zeros(self.latent))
@@ -625,27 +637,28 @@ class GCNModelVAE(GAE):
 
         ## 重构表达谱
         if self.used_recon_exp:
-            if self.conv_type == 'GAT':
+            if self.conv_type in ['GAT', 'GATv2Conv']:
                 self.GAT_decoder = GATDecoder(
                     in_channels=self.latent,
-                    hidden_dims=self.args.hidden_dims,
+                    hidden_dims=self.hidden_dims,
                     out_channels=self.feature_dim,
-                    num_heads=self.args.num_heads,
-                    dropout=self.args.dropout,
-                    concat=self.args.concat,
+                    conv_type=self.conv_type,
+                    num_heads=self.num_heads,
+                    dropout=self.dropout,
+                    concat=self.concat,
                     num_domains=self.n_domain,  # DSBN
-                    used_edge_weight=self.args.used_edge_weight,
-                    used_DSBN=self.args.used_DSBN
+                    used_edge_weight=self.used_edge_weight,
+                    used_DSBN=self.used_DSBN
                 )
             elif self.conv_type == 'GCN':
                 self.GCN_decoder = GCNDecoder(
                     in_channels=self.latent,
-                    hidden_channels=self.args.hidden_dims,
+                    hidden_channels=self.hidden_dims,
                     out_channels=self.feature_dim,
-                    dropout=self.args.dropout,
+                    dropout=self.dropout,
                     num_domains=self.n_domain,  # DSBN
-                    used_edge_weight=self.args.used_edge_weight,
-                    used_DSBN=self.args.used_DSBN
+                    used_edge_weight=self.used_edge_weight,
+                    used_DSBN=self.used_DSBN
                 )
             else:
                 raise NotImplementedError("Unknown GNN-Operator.")
@@ -661,7 +674,7 @@ class GCNModelVAE(GAE):
 
     def encode(self, *args, **kwargs) -> Tensor:
         """"""  # noqa: D419
-        if self.conv_type in ['GAT']:
+        if self.conv_type in ['GAT', 'GATv2Conv']:
             self.__mu1__, self.__logstd1__, self.__mu2__, self.__logstd2__ = self.encoder(*args, **kwargs)
             return self.__mu1__, self.__logstd1__, self.__mu2__, self.__logstd2__
         else:
@@ -683,6 +696,11 @@ class GCNModelVAE(GAE):
         """
         pos_loss = -torch.log(
             self.decoder(z, pos_edge_index, sigmoid=True) + EPS).mean()
+
+        # Do not include self-loops in negative samples
+        pos_edge_index, _ = remove_self_loops(pos_edge_index)
+        pos_edge_index, _ = add_self_loops(pos_edge_index)
+
         if neg_edge_index is None:
             neg_edge_index = negative_sampling(pos_edge_index, z.size(0))
         neg_loss = -torch.log(1 -
@@ -710,10 +728,47 @@ class GCNModelVAE(GAE):
         return -0.5 * torch.mean(
             torch.sum(1 + 2 * logstd - mu ** 2 - logstd.exp() ** 2, dim=1))
 
+    def calc_individual_metrics(self, z: Tensor, pos_edge_index: Tensor,
+                                neg_edge_index: Tensor) -> Tuple[Tensor, Tensor]:
+        r"""Given latent variables :obj:`z`, positive edges
+        :obj:`pos_edge_index` and negative edges :obj:`neg_edge_index`,
+        computes area under the ROC curve (AUC) and average precision (AP)
+        scores.
+
+        Args:
+            z (torch.Tensor): The latent space :math:`\mathbf{Z}`.
+            pos_edge_index (torch.Tensor): The positive edges to evaluate
+                against.
+            neg_edge_index (torch.Tensor): The negative edges to evaluate
+                against.
+        """
+        from sklearn.metrics import roc_auc_score, average_precision_score, accuracy_score, f1_score, roc_curve, \
+            precision_recall_curve, silhouette_score, calinski_harabasz_score, davies_bouldin_score
+
+        pos_y = z.new_ones(pos_edge_index.size(1))
+        neg_y = z.new_zeros(neg_edge_index.size(1))
+        y = torch.cat([pos_y, neg_y], dim=0)
+
+        pos_pred = self.decoder(z, pos_edge_index, sigmoid=True)
+        neg_pred = self.decoder(z, neg_edge_index, sigmoid=True)
+        pred = torch.cat([pos_pred, neg_pred], dim=0)
+
+        y, pred = y.detach().cpu().numpy(), pred.detach().cpu().numpy()
+
+        try:
+            roc_score = roc_auc_score(y, pred)
+        except ValueError:
+            roc_score = 0.5
+        ap_score = average_precision_score(y, pred)
+        acc = accuracy_score(y, pred > 0.5)
+        f1 = f1_score(y, pred > 0.5, average='micro')
+
+        return roc_score, ap_score, acc, f1
+
     def encodeBatch(self, data):
         all_mu1 = []
         for _ in range(self.gnn_layer):
-            if self.conv_type in ['GAT']:
+            if self.conv_type in ['GAT', 'GATv2Conv']:
                 mu1, _, _, _ = self.encode(data)
                 all_mu1.append(mu1)
             else:
@@ -726,7 +781,7 @@ class GCNModelVAE(GAE):
 
         ## 重构表达矩阵
         if self.used_recon_exp:
-            if self.conv_type in ['GAT']:
+            if self.conv_type in ['GAT', 'GATv2Conv']:
                 recon_features = self.GAT_decoder(z1, data)
             else:
                 recon_features = self.GCN_decoder(z1, data)
@@ -738,7 +793,7 @@ class GCNModelVAE(GAE):
         all_mu1 = []
         all_mu2 = []
         for _ in range(self.gnn_layer):
-            if self.conv_type in ['GAT']:
+            if self.conv_type in ['GAT', 'GATv2Conv']:
                 mu1, _, mu2, _ = self.encode(data)
                 all_mu1.append(mu1)
                 all_mu2.append(mu2)
@@ -765,7 +820,7 @@ class GCNModelVAE(GAE):
 
         ## 重构表达矩阵
         if self.used_recon_exp:
-            if self.conv_type in ['GAT']:
+            if self.conv_type in ['GAT', 'GATv2Conv']:
                 recon_features = self.GAT_decoder(z1, data)
             else:
                 recon_features = self.GCN_decoder(z1, data)
@@ -785,7 +840,7 @@ class GCNModelVAE(GAE):
         with torch.no_grad():
             all_mu = []
             for _ in range(self.gnn_layer):
-                if self.conv_type in ['GAT']:
+                if self.conv_type in ['GAT', 'GATv2Conv']:
                     mu1, _, _, _ = self.encode(data)
                     all_mu.append(mu1)
                 else:
@@ -796,5 +851,5 @@ class GCNModelVAE(GAE):
             logstd = torch.matmul(mean, self.eps_weight) + self.eps_bias
             z = self.reparametrize(mean, logstd)
 
-        roc_auc_score, average_precision_score = self.test(z, pos_edge_label_index, neg_edge_label_index)
-        return roc_auc_score, average_precision_score
+        roc_score, ap_score, acc, f1 = self.calc_individual_metrics(z, pos_edge_label_index, neg_edge_label_index)
+        return roc_score, ap_score, acc, f1

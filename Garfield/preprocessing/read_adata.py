@@ -166,7 +166,7 @@ def concat_data(
 
     if batch_key not in concat.obs:
         concat.obs[batch_key] = 'batch'
-    concat.obs[batch] = concat.obs[batch].astype('category')
+    concat.obs[batch_key] = concat.obs[batch_key].astype('category')
 
     if save:
         concat.write(save, compression='gzip')
