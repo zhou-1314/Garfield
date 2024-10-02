@@ -168,10 +168,10 @@ model.save(dir_path=model_folder_path,
 - **n_neighbors**: Number of neighbors to use in graph-based algorithms.
 - **metric**: Distance metric used during graph construction.
 - **svd_solver**: Solver for singular value decomposition (SVD).
+- **adj_key**: Key in the AnnData object that holds the adjacency matrix.
 
 #### Data Split Parameters
 
-- **adj_key**: Key in the AnnData object that holds the adjacency matrix.
 - **edge_val_ratio**: Ratio of edges to use for validation in edge-level tasks.
 - **edge_test_ratio**: Ratio of edges to use for testing in edge-level tasks.
 - **node_val_ratio**: Ratio of nodes to use for validation in node-level tasks.
@@ -237,8 +237,6 @@ model.save(dir_path=model_folder_path,
 
 - **verbose**: Whether to display detailed logs during training.
 
-  
-
 ## Support
 
 Please submit issues or reach out to zhouwg1314@gmail.com.
@@ -251,6 +249,7 @@ Garfield uses and/or references the following libraries and packages:
 - [scArches](https://github.com/theislab/scarches)
 
 - [SIMBA](https://github.com/pinellolab/simba)
+- [MaxFuse](https://github.com/shuxiaoc/maxfuse)
 - [scanpy](https://github.com/scverse/scanpy)
 
 Thanks for all their contributors and maintainers!

@@ -484,30 +484,27 @@ def preprocessing(
                     metric=metric
                 )
                 ## Concatenating different modalities
-                ## 节省图节点的显存，只关注top10000 的peaks
-                # Step 1: 确定高变基因的标识
-                # highly_variable = atac_adata_hvg.var['highly_variable']
-                # # Step 2: 按变异度排序并选择前 10000 个
-                # # 提取高变基因的变异度信息并按降序排列，选取前 10000 个
-                # top_10000_hvg_indices = (
-                #     atac_adata_hvg.var[highly_variable]
-                #     .sort_values(by='variances', ascending=False)
-                #     .head(10000)
-                #     .index
-                # )
-                # # Step 3: 提取包含这些基因的子对象
-                # atac_adata_hvg = atac_adata_hvg[:, top_10000_hvg_indices].copy()
-
                 adata_paired = ad.concat([rna_adata_hvg, atac_adata_hvg], axis=1)
+                # 假设 obsm 的每个值都是形状相同的矩阵，可以通过 np.hstack 或其他方法进行合并
+                rna_obsm = rna_adata_hvg.obsm
+                atac_obsm = atac_adata_hvg.obsm
+                # 只需要 feat key
+                # combined_obsm = {key: np.hstack((rna_obsm[key], atac_obsm[key])) for key in rna_obsm.keys()}
+                combined_obsm = np.hstack((rna_obsm['feat'], atac_obsm['feat']))
+                # 将合并后的 obsm 信息添加到 adata_paired，但先确保索引匹配
+                adata_paired.obsm['feat'] = pd.DataFrame(
+                    combined_obsm,
+                    index=adata_paired.obs.index  # 确保索引一致
+                )
 
                 ## the .obs layer is empty now, and we need to repopulate it
-                # rna_cols = rna_adata.obs.columns
-                # atac_cols = atac_adata.obs.columns
+                rna_cols = rna_adata.obs.columns
+                atac_cols = atac_adata.obs.columns
 
                 rnaobs = rna_adata.obs.copy()
-                # rnaobs.columns = ["rna:" + x for x in rna_cols]
+                rnaobs.columns = ["rna:" + x for x in rna_cols]
                 atacobs = atac_adata.obs.copy()
-                # atacobs.columns = ["atac:" + x for x in atac_cols]
+                atacobs.columns = ["atac:" + x for x in atac_cols]
                 adata_paired.obs = pd.merge(rnaobs, atacobs, left_index=True, right_index=True)
 
                 ## 先将 scATAC 转换为基因活性矩阵
@@ -557,9 +554,9 @@ def preprocessing(
                 # Iterate over keys in rna_obsp (assuming atac_obsp has the same keys)
                 for key in rna_adata_hvg.obsp.keys():
                     # 计算加权平均的连通性矩阵
-                    intra_connect = weight * rna_adata_hvg.obsp[key] + (1 - weight) * atac_adata_hvg.obsp[key]
+                    intra_connect = rna_adata_hvg.obsp[key] + atac_adata_hvg.obsp[key]
 
-                adata_paired.obsp['connectivities'] = inter_connect + intra_connect
+                adata_paired.obsp['connectivities'] = weight * inter_connect + (1 - weight) * intra_connect
 
                 return adata_paired
 
@@ -579,13 +576,13 @@ def preprocessing(
                 adata_paired = ad.concat([rna_adata_hvg, adt_adata_hvg], axis=1)
 
                 ## the .obs layer is empty now, and we need to repopulate it
-                # rna_cols = rna_adata.obs.columns
-                # adt_cols = adt_adata.obs.columns
+                rna_cols = rna_adata.obs.columns
+                adt_cols = adt_adata.obs.columns
 
                 rnaobs = rna_adata.obs.copy()
-                # rnaobs.columns = ["rna:" + x for x in rna_cols]
+                rnaobs.columns = ["rna:" + x for x in rna_cols]
                 adtobs = adt_adata.obs.copy()
-                # adtobs.columns = ["adt:" + x for x in adt_cols]
+                adtobs.columns = ["adt:" + x for x in adt_cols]
                 adata_paired.obs = pd.merge(rnaobs, adtobs, left_index=True, right_index=True)
 
                 ## 交集
@@ -615,9 +612,9 @@ def preprocessing(
                 # Iterate over keys in rna_obsp (assuming adt_obsp has the same keys)
                 for key in rna_adata_hvg.obsp.keys():
                     # 计算加权平均的连通性矩阵
-                    intra_connect = weight * rna_adata_hvg.obsp[key] + (1 - weight) * adt_adata_hvg.obsp[key]
+                    intra_connect = rna_adata_hvg.obsp[key] + adt_adata_hvg.obsp[key]
 
-                adata_paired.obsp['connectivities'] = inter_connect + intra_connect
+                adata_paired.obsp['connectivities'] = weight * inter_connect + (1 - weight) * intra_connect
 
                 return adata_paired
 
@@ -726,26 +723,49 @@ def preprocessing(
                 )
                 ## Concatenating different modalities
                 adata_paired = ad.concat([rna_adata_hvg, atac_adata_hvg], axis=1)
+                # 假设 obsm 的每个值都是形状相同的矩阵，可以通过 np.hstack 或其他方法进行合并
+                rna_obsm = rna_adata_hvg.obsm
+                atac_obsm = atac_adata_hvg.obsm
+                # 只需要 feat key
+                # combined_obsm = {key: np.hstack((rna_obsm[key], atac_obsm[key])) for key in rna_obsm.keys()}
+                combined_obsm = np.hstack((rna_obsm['feat'], atac_obsm['feat']))
+                # 将合并后的 obsm 信息添加到 adata_paired，但先确保索引匹配
+                adata_paired.obsm['feat'] = pd.DataFrame(
+                    combined_obsm,
+                    index=adata_paired.obs.index  # 确保索引一致
+                )
+                adata_paired.obsm['spatial'] = rna_adata.obsm['spatial']
 
                 ## the .obs layer is empty now, and we need to repopulate it
                 rna_cols = rna_adata.obs.columns
                 atac_cols = atac_adata.obs.columns
 
                 rnaobs = rna_adata.obs.copy()
-                # rnaobs.columns = ["rna:" + x for x in rna_cols]
+                rnaobs.columns = ["rna:" + x for x in rna_cols]
                 atacobs = atac_adata.obs.copy()
-                # atacobs.columns = ["atac:" + x for x in atac_cols]
+                atacobs.columns = ["atac:" + x for x in atac_cols]
                 adata_paired.obs = pd.merge(rnaobs, atacobs, left_index=True, right_index=True)
-
-                adata_paired.obsm = rna_adata.obsm
 
                 ## 先将 scATAC 转换为基因活性矩阵
                 if len(atac_adata.var_names) > 50000:
-                    print('Convert peak to gene activity matrix, please wait.', flush=True)
-                    print('`genome` parameter should be set correctly', flush=True)
-                    print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}", flush=True)
-                    adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weigt=use_gene_weigt,
-                                                use_top_pcs=use_top_pcs)
+                    # 定义保存文件的路径
+                    cache_path = "adata_ATAC_cache.h5ad"
+                    # 检查是否已经存在缓存文件
+                    if os.path.exists(cache_path):
+                        # 如果缓存文件存在，直接加载
+                        print("Gene activity matrix has been calculated, and loading cached adata_CG_atac object...")
+                        adata_CG_atac = sc.read_h5ad(cache_path)
+                    else:
+                        # 如果缓存文件不存在，执行耗时计算生成新的 adata
+                        print('Convert peak to gene activity matrix, this might take a while...', flush=True)
+                        print('`genome` parameter should be set correctly', flush=True)
+                        print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}", flush=True)
+                        # 生成新的 adata_CG_atac 对象
+                        adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weigt=use_gene_weigt,
+                                                    use_top_pcs=use_top_pcs)
+                        # 将 adata_new 保存到缓存文件中
+                        adata_CG_atac.write_h5ad(cache_path)
+                        print(f"adata object cached at: {cache_path}")
 
                     ## 交集
                     common_genes = set(rna_adata.var_names).intersection(set(adata_CG_atac.var_names))
@@ -779,8 +799,11 @@ def preprocessing(
 
                 # Construct Spatial Graph
                 if graph_const_method == 'mu_std':
-                    graph_dict = graph_construction(rna_adata_hvg, mode='mu_std', k=n)
-                    spatial_adj = graph_dict #.toarray()
+                    spatial_adj = graph_construction(rna_adata_hvg, mode='mu_std', k=n, batch_key=batch_key)
+                elif graph_const_method == 'Radius':
+                    spatial_adj = graph_construction(adata, mode='Radius', k=n, batch_key=batch_key)
+                elif graph_const_method == 'KNN':
+                    spatial_adj = graph_construction(adata, mode='KNN', k=n, batch_key=batch_key)
                 elif graph_const_method == 'Squidpy':
                     import squidpy as sq
                     sq.gr.spatial_neighbors(rna_adata_hvg, coord_type="generic", n_neighs=n)
@@ -791,6 +814,11 @@ def preprocessing(
                     spatial_adj = csr_matrix(spatial_adj)
                 if not isinstance(inter_connect, csr_matrix):
                     inter_connect = csr_matrix(inter_connect)
+
+                # Iterate over keys in rna_obsp (assuming adt_obsp has the same keys)
+                # for key in rna_adata_hvg.obsp.keys():
+                #     # 计算加权平均的连通性矩阵
+                #     intra_connect = rna_adata_hvg.obsp[key] + atac_adata_hvg.obsp[key]
 
                 # 计算加权平均的连通性矩阵
                 adata_paired.obsp['spatial_connectivities'] = spatial_adj
@@ -812,18 +840,28 @@ def preprocessing(
                 )
                 ## Concatenating different modalities
                 adata_paired = ad.concat([rna_adata_hvg, adt_adata_hvg], axis=1)
+                # 假设 obsm 的每个值都是形状相同的矩阵，可以通过 np.hstack 或其他方法进行合并
+                rna_obsm = rna_adata_hvg.obsm
+                adt_obsm = adt_adata_hvg.obsm
+                # 只需要 feat key
+                # combined_obsm = {key: np.hstack((rna_obsm[key], atac_obsm[key])) for key in rna_obsm.keys()}
+                combined_obsm = np.hstack((rna_obsm['feat'], adt_obsm['feat']))
+                # 将合并后的 obsm 信息添加到 adata_paired，但先确保索引匹配
+                adata_paired.obsm['feat'] = pd.DataFrame(
+                    combined_obsm,
+                    index=adata_paired.obs.index  # 确保索引一致
+                )
+                adata_paired.obsm['spatial'] = rna_adata.obsm['spatial']
 
                 ## the .obs layer is empty now, and we need to repopulate it
                 rna_cols = rna_adata.obs.columns
                 adt_cols = adt_adata.obs.columns
 
                 rnaobs = rna_adata.obs.copy()
-                # rnaobs.columns = ["rna:" + x for x in rna_cols]
+                rnaobs.columns = ["rna:" + x for x in rna_cols]
                 adtobs = adt_adata.obs.copy()
-                # adtobs.columns = ["adt:" + x for x in adt_cols]
+                adtobs.columns = ["adt:" + x for x in adt_cols]
                 adata_paired.obs = pd.merge(rnaobs, adtobs, left_index=True, right_index=True)
-
-                adata_paired.obsm = rna_adata.obsm
 
                 ## 交集
                 common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
@@ -850,9 +888,12 @@ def preprocessing(
                                            n_iters=n_iters, svd_runs=svd_runs, verbose=verbose)
 
                 # Construct Spatial Graph
-                if graph_const_method is None:
-                    graph_dict = graph_construction(rna_adata_hvg.obsm['spatial'], rna_adata_hvg.shape[0], k=n)
-                    spatial_adj = graph_dict #.toarray()
+                if graph_const_method == 'mu_std':
+                    spatial_adj = graph_construction(rna_adata_hvg, mode='mu_std', k=n, batch_key=batch_key)
+                elif graph_const_method == 'Radius':
+                    spatial_adj = graph_construction(adata, mode='Radius', k=n, batch_key=batch_key)
+                elif graph_const_method == 'KNN':
+                    spatial_adj = graph_construction(adata, mode='KNN', k=n, batch_key=batch_key)
                 elif graph_const_method == 'Squidpy':
                     import squidpy as sq
                     sq.gr.spatial_neighbors(rna_adata_hvg, coord_type="generic", n_neighs=n)

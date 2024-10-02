@@ -29,7 +29,7 @@ Reading
    data.edge_level_split
    data.node_level_split_mask
    data.prepare_data
-   data.SpatialAnnTorchDataset
+   data.GraphAnnTorchDataset
 
 See more at `anndata <https://anndata.readthedocs.io/en/latest/api.html#reading>`_
 
@@ -53,15 +53,15 @@ Preprocessing
 
 Model
 ~~~~~~~~
-.. module:: Garfield.models
+.. module:: Garfield.model
 .. currentmodule:: Garfield
 
 .. autosummary::
    :toctree: generated
 
-   models.utils.weighted_knn_trainer
-   models.utils.weighted_knn_transfer
-   models.Garfield.Garfield
+   model.utils.weighted_knn_trainer
+   model.utils.weighted_knn_transfer
+   model.Garfield.Garfield
 
 
 Loss

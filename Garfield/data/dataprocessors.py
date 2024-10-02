@@ -132,6 +132,7 @@ def node_level_split_mask(data: Data,
 
 def prepare_data(adata,
                  label_name: str = None,
+                 used_pca_feat: bool = False,
                  adj_key: str = "connectivities",
                  edge_label_adj_key: str = "edge_label_spatial_connectivities",
                  edge_val_ratio: float = 0.1,
@@ -177,6 +178,7 @@ def prepare_data(adata,
         adata=adata,
         label_name=label_name,
         adj_key=adj_key,
+        used_feat=used_pca_feat,
         edge_label_adj_key=edge_label_adj_key
     )
     # PyG Data object (has 2 edge index pairs for one edge because of symmetry;

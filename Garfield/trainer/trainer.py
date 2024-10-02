@@ -45,6 +45,7 @@ class GarfieldTrainer(BaseMixin):
                  adata,
                  model: nn.Module,
                  label_name,
+                 used_pca_feat,
                  adj_key,
                  edge_val_ratio,
                  edge_test_ratio,
@@ -74,6 +75,8 @@ class GarfieldTrainer(BaseMixin):
             The Garfield model to be trained.
         label_name : str
             Column name for labels in the annotated data.
+        used_pca_feat : Bool
+            Whether used pca features or not for node feature.
         adj_key : str
             Key for the adjacency matrix (e.g., spatial connectivity) in the data.
         edge_val_ratio : float
@@ -112,6 +115,7 @@ class GarfieldTrainer(BaseMixin):
         self.adata = adata
         self.model = model
         self.label_name_ = label_name
+        self.used_pca_feat_ = used_pca_feat
         self.adj_key_ = adj_key # spatial_connectivities
 
         ## data split
@@ -174,6 +178,7 @@ class GarfieldTrainer(BaseMixin):
         data_dict = prepare_data(
             adata=self.adata,
             label_name=self.label_name_,
+            used_pca_feat=self.used_pca_feat_,
             adj_key=self.adj_key_,
             edge_val_ratio=self.edge_val_ratio_,
             edge_test_ratio=self.edge_test_ratio_,

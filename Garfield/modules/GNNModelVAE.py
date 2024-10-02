@@ -307,7 +307,7 @@ class GNNModelVAE(GAE):
         """
         loss_dict = {}
 
-        # Compute Kullback-Leibler divergence loss for edge and node batch
+        # 1. Compute Kullback-Leibler divergence loss for edge and node batch
         loss_dict["kl_reg_loss"] = compute_kl_reg_loss(
             mu=node_model_output["mu"],
             logstd=node_model_output["logstd"])
@@ -315,44 +315,45 @@ class GNNModelVAE(GAE):
             mu=edge_model_output["mu"],
             logstd=edge_model_output["logstd"])
 
-        # Compute edge reconstruction binary cross entropy loss for edge batch
+        # 2. Compute edge reconstruction binary cross entropy loss for edge batch
         loss_dict["edge_recon_loss"] = (
                 lambda_edge_recon * compute_edge_recon_loss(
             edge_recon_logits=edge_model_output["edge_recon_logits"],
             edge_recon_labels=edge_model_output["edge_recon_labels"]))
 
-        # Compute gene expression reconstruction with MSE loss for node batch
+        # 3. Compute gene expression reconstruction with MSE loss for node batch
         loss_dict["gene_expr_recon_loss"] = (
                 lambda_gene_expr_recon *
                 compute_omics_recon_mse_loss(
                     recon_x=node_model_output["recon_features"],
-                    x=node_model_output["truth_x"]))
+                    x=node_model_output["truth_x"])) # * node_model_output['truth_x'].size(0)
 
-        # compute Contrastive instance losses
+        # 4. compute Contrastive instance losses
         loss_dict["lambda_latent_contrastive_instanceloss"] = compute_contrastive_instanceloss(node_model_output['z_1'],
                                                                                 node_model_output['z_2'],
                                                                                 lambda_latent_contrastive_instanceloss)
-        # compute Contrastive cluster losses
+        # 5. compute Contrastive cluster losses
         loss_dict["lambda_latent_contrastive_clusterloss"] = compute_contrastive_clusterloss(node_model_output['c_1'],
                                                                                 node_model_output['c_2'],
                                                                                 self.cluster_num,
                                                                                 lambda_latent_contrastive_clusterloss)
 
-        # compute MMD loss
+        # 6. compute MMD loss
         if self.used_mmd:
             cell_batch = node_model_output['truth_y']
+            device = cell_batch.device
             cell_batch = cell_batch.detach().cpu()
             unique_groups, group_indices = np.unique(cell_batch, return_inverse=True)
             grouped_z_cell = {group: node_model_output['z'][group_indices == i] for i, group in enumerate(unique_groups)}
             group_labels = list(unique_groups)
             num_groups = len(group_labels)
 
-            loss_dict["gene_expr_mmd_loss"] = torch.tensor(0, dtype=torch.float)
+            loss_dict["gene_expr_mmd_loss"] = torch.tensor(0, dtype=torch.float).to(device)
             for i in range(num_groups):
                 for j in range(i + 1, num_groups):
                     z_i = grouped_z_cell[group_labels[i]]
                     z_j = grouped_z_cell[group_labels[j]]
-                    mmd_loss_tmp = compute_omics_recon_mmd_loss(z_i, z_j) * node_model_output['z'].size(0)
+                    mmd_loss_tmp = compute_omics_recon_mmd_loss(z_i, z_j) * 600 # * node_model_output['z'].size(0)
                     loss_dict["gene_expr_mmd_loss"] += mmd_loss_tmp * lambda_omics_recon_mmd_loss
 
         # Compute optimization loss used for backpropagation as well as global

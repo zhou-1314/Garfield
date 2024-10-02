@@ -169,8 +169,8 @@ class GATEncoder(nn.Module):
                 sparse_adj = recon_adj.to_sparse()
                 edge_index_aug = sparse_adj.indices()
                 edge_weight_aug = sparse_adj.values().unsqueeze(1)
-                # x_aug = drop_feature(x=x, drop_prob=self.drop_feature_rate)
-                x_aug = data.x
+                x_aug = drop_feature(x=x, drop_prob=self.drop_feature_rate)
+                # x_aug = data.x
             else:
                 raise NotImplementedError(f"Unknown augment type: {augment_type}")
 

@@ -10,12 +10,12 @@ import warnings
 from typing import Optional
 
 import numpy as np
-import pickle
+# import pickle
 import scipy.sparse as sp
 import torch
 from anndata import AnnData
 
-from .utils import load_saved_files
+from .utils import load_saved_files, save_model_with_fallback
 
 
 class BaseModelMixin():
@@ -93,8 +93,9 @@ class BaseModelMixin():
 
         torch.save(self.model.state_dict(), model_save_path)
         np.savetxt(var_names_save_path, var_names, fmt="%s")
-        with open(attr_save_path, "wb") as f:
-            pickle.dump(public_attributes, f)
+        save_model_with_fallback(public_attributes, attr_save_path)
+        # with open(attr_save_path, "wb") as f:
+        #     pickle.dump(public_attributes, f)
 
     @classmethod
     def load_query_data(cls,

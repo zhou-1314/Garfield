@@ -25,7 +25,7 @@ def html_page_context(app, pagename, templatename, context, doctree):
             context["display_github"] = True
             context["github_user"] = "zhou-1314"
             context["github_repo"] = "Garfield_tutorials"
-            context["github_version"] = "master"
+            context["github_version"] = "main"
             if path.endswith("rna_10x_mouse_brain_1p3M.ipynb"):
                 context["conf_py_path"] = "/v1.1/"
             else:
@@ -34,7 +34,7 @@ def html_page_context(app, pagename, templatename, context, doctree):
             context["display_github"] = True
             context["github_user"] = "zhou-1314"
             context["github_repo"] = "Garfield"
-            context["github_version"] = "master"
+            context["github_version"] = "main"
             context["conf_py_path"] = "/docs/source/"
 
 def setup(app):

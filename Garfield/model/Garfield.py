@@ -193,6 +193,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.metric_ = self.args.metric
         self.svd_solver_ = self.args.svd_solver
         # datasets
+        self.used_pca_feat_ = self.args.used_pca_feat
         self.adj_key_ = self.args.adj_key
         # data split parameters
         self.edge_val_ratio_ = self.args.edge_val_ratio
@@ -279,7 +280,11 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             svd_solver=self.svd_solver_
         )
         # set up model
-        self.num_features_ = self.adata.n_vars
+        if not self.used_pca_feat_:
+            self.num_features_ = self.adata.n_vars
+        else:
+            self.num_features_ = self.adata.obsm['feat'].shape[1]
+
         if self.sample_col_ is not None:
             self.n_domain_ = len(self.adata.obs[self.sample_col_].unique())
         else:
@@ -350,6 +355,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             adata=self.adata,
             model=self.model,
             label_name=self.sample_col_,
+            used_pca_feat=self.used_pca_feat_,
             adj_key=self.adj_key_,
             # data split
             edge_val_ratio=self.edge_val_ratio_,
@@ -446,6 +452,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         data_dict = prepare_data(
             adata=adata,
             adj_key=adj_key,
+            used_pca_feat=self.used_pca_feat_,
             edge_val_ratio=0.,
             edge_test_ratio=0.,
             node_val_ratio=0.,

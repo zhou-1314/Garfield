@@ -5,6 +5,7 @@ This module contains helper functions for the ´models´ subpackage.
 import logging
 import os
 import pickle
+import dill
 from collections import OrderedDict
 from typing import Optional, Tuple, Literal
 
@@ -19,6 +20,35 @@ from scipy.sparse import csr_matrix, hstack
 from sklearn.neighbors import KNeighborsTransformer
 
 logger = logging.getLogger(__name__)
+
+
+def save_model_with_fallback(model, file_path):
+    try:
+        # 尝试使用 pickle 保存
+        with open(file_path, "wb") as f:
+            pickle.dump(model, f)
+        print(f"Model saved successfully using pickle at {file_path}")
+    except (AttributeError, pickle.PicklingError) as e:
+        # 如果 pickle 保存失败，捕获异常并使用 joblib
+        print(f"Pickle failed with error: {e}, switching to dill...")
+        with open(file_path, "wb") as f:
+            dill.dump(model, f)
+        print(f"Model saved successfully using dill at {file_path}")
+
+def load_model_with_fallback(file_path):
+    try:
+        # 尝试使用 pickle 加载
+        with open(file_path, "rb") as f:
+            model = pickle.load(f)
+        print(f"Model loaded successfully using pickle from {file_path}")
+    except (AttributeError, pickle.UnpicklingError, EOFError) as e:
+        # 如果 pickle 加载失败，捕获异常并使用 joblib
+        print(f"Pickle failed with error: {e}, switching to dill...")
+        with open(file_path, "rb") as f:
+            model = dill.load(f)
+        print(f"Model loaded successfully using dill from {file_path}")
+
+    return model
 
 
 def load_saved_files(dir_path: str,
@@ -86,8 +116,9 @@ def load_saved_files(dir_path: str,
         adata_concat = None
 
     model_state_dict = torch.load(model_path, map_location=map_location)
-    with open(attr_path, "rb") as handle:
-        attr_dict = pickle.load(handle)
+    attr_dict = load_model_with_fallback(attr_path)
+    # with open(attr_path, "rb") as handle:
+    #     attr_dict = pickle.load(handle)
     return model_state_dict, var_names, attr_dict, adata_concat
 
 

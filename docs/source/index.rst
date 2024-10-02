@@ -25,14 +25,12 @@ Garfield is a novel graph representation algorithm with contrastive learning to 
    :maxdepth: 1
    :caption: Tutorials
 
-   rna_10xpmbc_all_genes
-   atac_buenrostro2018_peaks_and_sequences
-   multiome_shareseq
-   multiome_shareseq_GRN
-   rna_mouse_atlas
-   rna_human_pancreas
-   multiome_10xpmbc10k_integration
-   rna_10x_mouse_brain_1p3M
+   01.panc8_all_batch_correction
+   02.panc_mapping
+   03.10x_pbmc_paired_scMulti_analysis
+   04.Garfield_spatia_molecular_niche_seqFISH_Mouse_Organogenesis
+   05.Garfield_spatial_niche_slideseqv2_mouse_hippocampus
+   06.Garfield_spMulti_mouse_brain
 
 
 

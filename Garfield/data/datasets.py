@@ -41,10 +41,15 @@ class GraphAnnTorchDataset():
                  label_name: str = None,
                  adj_key: Literal["spatial_connectivities", "connectivities"]="spatial_connectivities",
                  edge_label_adj_key: str = "edge_label_spatial_connectivities",
+                 used_feat: bool = False,
                  self_loops: bool = True):
         super(GraphAnnTorchDataset, self).__init__()
 
-        x = adata.X
+        if not used_feat:
+            x = adata.X
+        else:
+            x = np.array(adata.obsm['feat'])
+
         # Store features in dense format
         if sp.issparse(x):
             self.x = torch.tensor(x.toarray())

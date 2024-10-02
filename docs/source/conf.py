@@ -31,18 +31,17 @@ release = Garfield.__version__
 
 from urllib.request import urlretrieve  # noqa: E402
 
-notebooks_url = "https://github.com/huidongchen/simba_tutorials/raw/main/"
+notebooks_url = "https://github.com/zhou-1314/Garfield_tutorials/tree/main/"
 notebooks_v1_0 = [
-    "rna_10xpmbc_all_genes.ipynb",
-    "atac_buenrostro2018_peaks_and_sequences.ipynb",
-    "multiome_shareseq.ipynb",
-    "multiome_shareseq_GRN.ipynb",
-    "rna_mouse_atlas.ipynb",
-    "rna_human_pancreas.ipynb",
-    "multiome_10xpmbc10k_integration.ipynb",
+    "01.panc8_all_batch_correction.ipynb",
+    "02.panc_mapping.ipynb",
+    "03.10x_pbmc_paired_scMulti_analysis.ipynb",
+    "04.Garfield_spatia_molecular_niche_seqFISH_Mouse_Organogenesis.ipynb",
+    "05.Garfield_spatial_niche_slideseqv2_mouse_hippocampus.ipynb",
+    "06.Garfield_spMulti_mouse_brain.ipynb",
 ]
 notebooks_v1_1 = [
-    "rna_10x_mouse_brain_1p3M.ipynb",
+    # "rna_10x_mouse_brain_1p3M.ipynb",
 ]
 for nb in notebooks_v1_0:
     try:
@@ -101,8 +100,8 @@ html_theme_options = {
     'logo_only': True,
 }
 html_show_sphinx = False
-html_logo = '_static/img/logo_simba.png'
-html_favicon = '_static/img/lion_icon.svg'
+html_logo = '_static/img/logo_garfield.png'
+html_favicon = '_static/img/garfield_icon.svg'
 github_repo = 'Garfield'
 github_nb_repo = 'Garfield_tutorials'
 

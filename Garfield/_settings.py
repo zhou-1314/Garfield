@@ -113,7 +113,7 @@ class GarfieldConfig:
             'sub_data_type': None,
             'sample_col': None,
             'weight': 0.8,
-            'graph_const_method': None,
+            'graph_const_method': 'mu_std',
             'genome': None,
             'use_gene_weight': True,
             'use_top_pcs': False,
@@ -129,6 +129,7 @@ class GarfieldConfig:
             'metric': 'euclidean',
             'svd_solver': 'arpack',
             # datasets
+            'used_pca_feat': False,
             'adj_key': 'spatial_connectivities',
             # data split parameters
             'edge_val_ratio': 0.1,
