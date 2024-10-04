@@ -30,8 +30,6 @@ def DataProcess(
          metric='correlation',
          svd_solver='arpack'):
     """
-    DataProcess
-    -----------
     Processes single or multi-modal data (e.g., RNA, ATAC, ADT, spatial) with optional preprocessing steps
     such as normalization, feature selection, and dimensionality reduction.
 

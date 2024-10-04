@@ -48,7 +48,9 @@ Dev version
 
 To install the development version on `GitHub <https://github.com/zhou-1314/Garfield/>`_,
 first install torch::
+
     pip install torch torchvision torchaudio
+
 then run::
 
     git clone https://github.com/zhou-1314/Garfield.git
