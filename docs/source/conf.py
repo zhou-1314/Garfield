@@ -13,15 +13,14 @@
 import os
 import sys
 from datetime import datetime
+
 sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
+
 import Garfield  # noqa: E402
 
-
 # -- Project information -----------------------------------------------------
-
 project = 'Garfield'
-copyright = '2024, Weige Zhou'
 author = 'Weige Zhou'
 copyright = f'{datetime.now():%Y}, {author}.'
 

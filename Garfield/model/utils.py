@@ -174,7 +174,9 @@ def validate_var_names(adata, source_var_names):
     return new_adata
 
 def weighted_knn_trainer(train_adata, train_adata_emb, n_neighbors=50):
-    """Trains a weighted KNN classifier on ``train_adata``.
+    """
+    Trains a weighted KNN classifier on ``train_adata``.
+
     Parameters
     ----------
     train_adata: :class:`~anndata.AnnData`
@@ -216,7 +218,9 @@ def weighted_knn_transfer(
     pred_unknown=False,
     mode="package",
 ):
-    """Annotates ``query_adata`` cells with an input trained weighted KNN classifier.
+    """
+    Annotates ``query_adata`` cells with an input trained weighted KNN classifier.
+
     Parameters
     ----------
     query_adata: :class:`~anndata.AnnData`
