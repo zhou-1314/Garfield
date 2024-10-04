@@ -19,6 +19,13 @@ sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
 
 import Garfield  # noqa: E402
+print("Garfield module path:", Garfield.__file__)
+print("Current sys.path:", sys.path)
+import sys
+import Garfield.data  # 确保导入后再检查
+
+print("Modules loaded:", list(sys.modules.keys()))
+
 
 # -- Project information -----------------------------------------------------
 project = 'Garfield'
