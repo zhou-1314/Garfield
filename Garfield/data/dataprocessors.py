@@ -140,10 +140,7 @@ def prepare_data(adata,
                  node_val_ratio: float = 0.1,
                  node_test_ratio: float = 0.) -> dict:
     """
-    prepare_data
-    ------------
-    Prepares the dataset for training and evaluation by performing node-level and
-    edge-level splits and returns a dictionary containing the processed data.
+    This function performs node-level and edge-level splits and returns a dictionary containing the processed data.
 
     Parameters
     ----------
@@ -165,7 +162,7 @@ def prepare_data(adata,
         Proportion of nodes to use for testing in the node-level split. Default is 0.
 
     Returns
-    -------
+    ----------
     dict
         A dictionary containing the following keys:
         - "edge_train_data": Training data for edge-level tasks.

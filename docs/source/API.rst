@@ -8,7 +8,7 @@ Import Garfield as::
    import Garfield as gf
 
 Configuration for Garfield
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: _autosummary
 
@@ -52,7 +52,7 @@ Preprocessing
 
 
 Model
-~~~~~~~~
+~~~~~
 .. module:: Garfield.model
 .. currentmodule:: Garfield
 
@@ -65,7 +65,7 @@ Model
 
 
 Loss
-~~~~~~~~
+~~~~
 .. module:: Garfield.modules
 .. currentmodule:: Garfield
 
@@ -81,7 +81,7 @@ Loss
 
 
 Modules
-~~~~~~~~
+~~~~~~~
 .. module:: Garfield.modules
 .. currentmodule:: Garfield
 
@@ -92,7 +92,7 @@ Modules
 
 
 NN
-~~~~~~~~
+~~
 .. module:: Garfield.nn
 .. currentmodule:: Garfield
 
@@ -107,7 +107,7 @@ NN
 
 
 Trainer
-~~~~~~~~
+~~~~~~~
 .. module:: Garfield.trainer
 .. currentmodule:: Garfield
 
@@ -120,7 +120,7 @@ Trainer
 
 
 Tools
-~~~~~~~~
+~~~~~
 .. module:: Garfield.trainer
 .. currentmodule:: Garfield
 

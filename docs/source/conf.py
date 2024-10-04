@@ -12,6 +12,7 @@
 #
 import os
 import sys
+from datetime import datetime
 sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
 import Garfield  # noqa: E402
@@ -22,38 +23,10 @@ import Garfield  # noqa: E402
 project = 'Garfield'
 copyright = '2024, Weige Zhou'
 author = 'Weige Zhou'
+copyright = f'{datetime.now():%Y}, {author}.'
 
 # The full version, including alpha/beta/rc tags
 release = Garfield.__version__
-
-
-# -- Retrieve notebooks (borrowed from scVelo) -------------------------------
-
-from urllib.request import urlretrieve  # noqa: E402
-
-notebooks_url = "https://github.com/zhou-1314/Garfield_tutorials/tree/main/"
-notebooks_v1_0 = [
-    "01.panc8_all_batch_correction.ipynb",
-    "02.panc_mapping.ipynb",
-    "03.10x_pbmc_paired_scMulti_analysis.ipynb",
-    "04.Garfield_spatia_molecular_niche_seqFISH_Mouse_Organogenesis.ipynb",
-    "05.Garfield_spatial_niche_slideseqv2_mouse_hippocampus.ipynb",
-    "06.Garfield_spMulti_mouse_brain.ipynb",
-]
-notebooks_v1_1 = [
-    # "rna_10x_mouse_brain_1p3M.ipynb",
-]
-for nb in notebooks_v1_0:
-    try:
-        urlretrieve(notebooks_url + "v1.0/" + nb, nb)
-    except Exception:
-        pass
-
-for nb in notebooks_v1_1:
-    try:
-        urlretrieve(notebooks_url + "v1.1/" + nb, nb)
-    except Exception:
-        pass
 
 # -- General configuration ---------------------------------------------------
 
@@ -67,6 +40,8 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     'sphinx.ext.napoleon',
+    'sphinx.ext.doctest',
+    'sphinx.ext.coverage',
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
@@ -74,7 +49,9 @@ extensions = [
     "edit_on_github",
     ]
 
+# Generate the API documentation when building
 autosummary_generate = True
+autodoc_member_order = 'bysource'
 
 # Napoleon settings
 napoleon_google_docstring = False
@@ -99,11 +76,17 @@ html_theme_options = {
     "titles_only": True,
     'logo_only': True,
 }
+html_context = dict(
+    github_user='zhou-1314',  # Username
+    github_repo='Garfield',  # Repo name
+    github_version='main',  # Version
+    conf_py_path='/docs/',  # Path in the checkout to the docs root
+)
 html_show_sphinx = False
 html_logo = '_static/img/logo_garfield.png'
 html_favicon = '_static/img/garfield_icon.svg'
-github_repo = 'Garfield'
-github_nb_repo = 'Garfield_tutorials'
+# github_repo = 'Garfield'
+# github_nb_repo = 'Garfield_tutorials'
 
 
 # Add any paths that contain custom static files (such as style sheets) here,

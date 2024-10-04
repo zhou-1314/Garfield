@@ -2,7 +2,7 @@ Installation
 ============
 
 Stable version
-~~~~~~~~
+~~~~~~~~~~~~~~
 
 To use Garfield, first install it:
 
