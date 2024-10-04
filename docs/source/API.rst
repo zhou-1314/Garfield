@@ -5,7 +5,7 @@ API
 
 Import Garfield as::
 
-   import Garfield as gf
+   import Garfield
 
 Configuration for Garfield
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
