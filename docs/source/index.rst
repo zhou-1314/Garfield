@@ -1,5 +1,5 @@
 Garfield: Graph-based Contrastive Learning enables Fast Single-Cell Embedding
-========================================================================
+=============================================================================
 
 Garfield is a novel graph representation algorithm with contrastive learning to embed cells into the same latent space. The joint embedding of cells allows Garfield to perform various types of single cell or spatial tasks, including scRNA-seq, scATAC-seq and scProtein clustering, batch correction, multi-omics integration, spatial domain discovery and label transfer of spatial data with scRNA-seq data.
 

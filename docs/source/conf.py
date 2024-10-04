@@ -13,8 +13,11 @@
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath('../Garfield'))
+HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE / "Garfield"))
+# sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
 
 import Garfield  # noqa: E402
