@@ -50,8 +50,8 @@ extensions = [
 
 # Generate the API documentation when building
 autosummary_generate = True
-autodoc_member_order = 'bysource'
-autodoc_mock_imports = ['Garfield']
+# autodoc_member_order = 'bysource'
+# autodoc_mock_imports = ['Garfield']
 
 # Napoleon settings
 napoleon_google_docstring = False

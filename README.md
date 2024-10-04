@@ -25,7 +25,7 @@ Garfield is implemented in [Pytorch](https://pytorch.org/) framework.
 
 ## Documentation
 
-Please refer to the [documentation](https://biogarfield.readthedocs.io/en/latest/) for more details.
+Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/latest/) for more details.
 
 ### Main Parameters of Garfield Model
 
