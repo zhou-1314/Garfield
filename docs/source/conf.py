@@ -14,8 +14,8 @@ import os
 import sys
 from datetime import datetime
 
-sys.path.insert(0, os.path.abspath('./Garfield'))
-# sys.path.insert(0, os.path.abspath('../Garfield'))
+# sys.path.insert(0, os.path.abspath('./Garfield'))
+sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
 
 import Garfield  # noqa: E402
@@ -51,6 +51,7 @@ extensions = [
 # Generate the API documentation when building
 autosummary_generate = True
 autodoc_member_order = 'bysource'
+autodoc_mock_imports = ['Garfield']
 
 # Napoleon settings
 napoleon_google_docstring = False
