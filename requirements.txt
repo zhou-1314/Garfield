@@ -1,5 +1,6 @@
 numpy>=1.17.0
 pandas>=1.0,!=1.1 #  required by Anndata
+dill>=0.3.8
 anndata>=0.7.4,!=0.10.9
 scanpy>=1.9.6
 muon>=0.1.6
