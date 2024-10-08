@@ -35,10 +35,6 @@ class GraphAnnTorchDataset():
     self_loops:
         If ´True´, add self loops to the adjacency matrix to model autocrine
         communication.
-
-    Returns
-    ----------
-    None
     """
     def __init__(self,
                  adata, # : AnnData,

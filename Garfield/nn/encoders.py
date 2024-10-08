@@ -12,15 +12,53 @@ from torch_geometric.nn import GCNConv, GATConv, GATv2Conv
 from .utils import DSBatchNorm, drop_feature
 
 class Projection(nn.Module):
-    def __init__(self, in_dim : int, encoder_dim : int):
+    def __init__(self, in_dim: int, encoder_dim: int):
+        """
+        Initializes the Projection layer.
+
+        Parameters
+        ----------
+        in_dim : int
+            The dimension of the input features.
+        encoder_dim : int
+            The dimension of the encoded features.
+        """
         super().__init__()
         self.layer = nn.Linear(in_dim, encoder_dim, bias=True)
         self.relu = nn.ReLU()
+
     def forward(self, x):
+        """
+        Forward pass through the Projection layer.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor with shape (batch_size, in_dim).
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor with shape (batch_size, encoder_dim) after applying a linear transformation and ReLU activation.
+        """
         return self.relu(self.layer(x))
 
 
 class GATEncoder(nn.Module):
+    """
+    The GATEncoder class implements a Graph Attention Network (GAT) encoder with multiple layers,
+    normalization, and optional fully connected (FC) encoder. It supports different types of GAT
+    convolutions and augmentations for omics and graph data.
+
+    Methods
+    -------
+    forward(data, decoder_type, augment_type)
+        Performs the forward pass through the GAT encoder, applying either omics or graph decoding,
+        with optional augmentation.
+
+    _forward_through_layers(x, edge_index, edge_weight, y)
+        Helper function to pass the input features through multiple GAT layers and apply normalization.
+    """
     def __init__(self, in_channels, hidden_dims, latent_dim, conv_type, use_FCencoder,
                  drop_feature_rate, drop_edge_rate, svd_q, num_heads, dropout, concat,
                  num_domains=1, used_edge_weight=False, used_DSBN=False):
@@ -241,6 +279,23 @@ class GATEncoder(nn.Module):
 
 ### GCN encoder
 class GCNEncoder(nn.Module):
+    """
+    The GCNEncoder class implements a Graph Convolutional Network (GCN) encoder with multiple layers,
+    normalization, and optional fully connected (FC) encoder. It supports different types of augmentations
+    for omics and graph data.
+
+    Methods
+    -------
+    forward(data, decoder_type, augment_type)
+        Performs the forward pass through the GCN encoder, applying either omics or graph decoding,
+        with optional augmentation.
+
+    _forward_through_layers(x, edge_index, edge_weight, y)
+        Helper function to pass the input features through multiple GCN layers and apply normalization.
+
+    _apply_normalization(x, y, idx)
+        Applies batch normalization or domain-specific batch normalization (DSBN) based on the model's configuration.
+    """
     def __init__(self, in_channels, hidden_dims, latent_dim, use_FCencoder,
                  drop_feature_rate, drop_edge_rate, svd_q, dropout=0.2,
                  num_domains=1, used_edge_weight=False, used_DSBN=False):

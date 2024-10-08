@@ -21,8 +21,6 @@ class GNNModelVAE(GAE):
                  include_gene_expr_recon_loss=True, used_mmd=False
                  ):
         """
-        Garfield model class. This class contains the implementation of GNNModel Variational Auto-encoder.
-
         Parameters
         ----------
         encoder : nn.Module

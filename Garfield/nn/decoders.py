@@ -10,6 +10,14 @@ from torch_geometric.nn import GCNConv, GATConv, GATv2Conv
 from .utils import DSBatchNorm, compute_cosine_similarity
 
 class GATDecoder(nn.Module):
+    """
+    Graph Attention Network (GAT) Decoder class.
+
+    This class implements a GAT-based decoder for reconstructing node features
+    from latent representations. It supports domain-specific batch normalization
+    (DSBN) and edge weights.
+
+    """
     def __init__(self, in_channels, hidden_dims, out_channels, conv_type, num_heads, dropout, concat,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
         """
@@ -136,6 +144,14 @@ class GATDecoder(nn.Module):
 
 ### GCN decoder
 class GCNDecoder(nn.Module):
+    """
+    Graph Convolutional Network (GCN) Decoder class.
+
+    This class implements a GCN-based decoder for reconstructing node features
+    from latent representations. It supports domain-specific batch normalization
+    (DSBN) and edge weights.
+
+    """
     def __init__(self, in_channels, hidden_dims, out_channels, dropout=0.2,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
         """

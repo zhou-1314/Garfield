@@ -192,7 +192,7 @@ class BaseModelMixin():
         Check if the model is trained.
 
         Parameters
-        ----------
+        -------
         warn:
              If not trained and `warn` is True, raise a warning, else raise a
              RuntimeError.
