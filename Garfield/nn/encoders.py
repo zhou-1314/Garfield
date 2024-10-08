@@ -51,13 +51,43 @@ class GATEncoder(nn.Module):
     convolutions and augmentations for omics and graph data.
 
     Methods
-    -------
+    ----------
     forward(data, decoder_type, augment_type)
         Performs the forward pass through the GAT encoder, applying either omics or graph decoding,
         with optional augmentation.
-
     _forward_through_layers(x, edge_index, edge_weight, y)
         Helper function to pass the input features through multiple GAT layers and apply normalization.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of input feature dimensions (length of each node's feature vector).
+    hidden_dims : list[int]
+        List of output dimensions for each hidden layer in the GAT.
+    latent_dim : int
+        Dimension of the latent feature representation produced by the encoder.
+    conv_type : str
+        Type of GAT convolution to use ('GAT' or 'GATv2Conv').
+    use_FCencoder : bool
+        Whether to use an additional fully connected encoder before the GAT layers.
+    drop_feature_rate : float
+        Dropout rate for node features during augmentation.
+    drop_edge_rate : float
+        Dropout rate for edges during augmentation.
+    svd_q : int
+        Rank for the low-rank SVD approximation used in augmentations. Default is 5.
+    num_heads : int
+        Number of attention heads for each GAT layer.
+    dropout : float
+        Dropout rate for GAT layers.
+    concat : bool
+        Whether to concatenate the outputs of all attention heads.
+    num_domains : int, optional
+        Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used. Default is 1.
+    used_edge_weight : bool, optional
+        Whether to use edge weights in the GAT layers. Default is False.
+    used_DSBN : bool, optional
+        Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
     def __init__(self, in_channels, hidden_dims, latent_dim, conv_type, use_FCencoder,
                  drop_feature_rate, drop_edge_rate, svd_q, num_heads, dropout, concat,
@@ -65,37 +95,6 @@ class GATEncoder(nn.Module):
         """
         Initializes the GATEncoder with multiple Graph Attention Network (GAT) layers, normalization layers,
         and optional fully connected (FC) encoder.
-
-        Parameters
-        ----------
-        in_channels : int
-            Number of input feature dimensions (length of each node's feature vector).
-        hidden_dims : list[int]
-            List of output dimensions for each hidden layer in the GAT.
-        latent_dim : int
-            Dimension of the latent feature representation produced by the encoder.
-        conv_type : str
-            Type of GAT convolution to use ('GAT' or 'GATv2Conv').
-        use_FCencoder : bool
-            Whether to use an additional fully connected encoder before the GAT layers.
-        drop_feature_rate : float
-            Dropout rate for node features during augmentation.
-        drop_edge_rate : float
-            Dropout rate for edges during augmentation.
-        svd_q : int
-            Rank for the low-rank SVD approximation used in augmentations. Default is 5.
-        num_heads : int
-            Number of attention heads for each GAT layer.
-        dropout : float
-            Dropout rate for GAT layers.
-        concat : bool
-            Whether to concatenate the outputs of all attention heads.
-        num_domains : int, optional
-            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used. Default is 1.
-        used_edge_weight : bool, optional
-            Whether to use edge weights in the GAT layers. Default is False.
-        used_DSBN : bool, optional
-            Whether to use domain-specific batch normalization (DSBN). Default is False.
         """
         super(GATEncoder, self).__init__()
         self.use_FCencoder = use_FCencoder
@@ -285,47 +284,45 @@ class GCNEncoder(nn.Module):
     for omics and graph data.
 
     Methods
-    -------
+    ----------
     forward(data, decoder_type, augment_type)
         Performs the forward pass through the GCN encoder, applying either omics or graph decoding,
         with optional augmentation.
-
     _forward_through_layers(x, edge_index, edge_weight, y)
         Helper function to pass the input features through multiple GCN layers and apply normalization.
-
     _apply_normalization(x, y, idx)
         Applies batch normalization or domain-specific batch normalization (DSBN) based on the model's configuration.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of input feature dimensions (length of each node's feature vector).
+    hidden_dims : list[int]
+        List of output dimensions for each hidden layer in the GCN.
+    latent_dim : int
+        Dimension of the latent feature representation produced by the encoder.
+    use_FCencoder : bool
+        Whether to use a fully connected encoder (FC encoder) before the GCN layers.
+    drop_feature_rate : float
+        Dropout rate for node features during augmentation.
+    drop_edge_rate : float
+        Dropout rate for edges during augmentation.
+    svd_q : int
+        Rank for the low-rank SVD approximation used in augmentations.
+    dropout : float, optional
+        Dropout rate applied to GCN layers, default is 0.2.
+    num_domains : int, optional
+        Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used. Default is 1.
+    used_edge_weight : bool, optional
+        Whether to use edge weights in the GCN layers. Default is False.
+    used_DSBN : bool, optional
+        Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
     def __init__(self, in_channels, hidden_dims, latent_dim, use_FCencoder,
                  drop_feature_rate, drop_edge_rate, svd_q, dropout=0.2,
                  num_domains=1, used_edge_weight=False, used_DSBN=False):
         """
         Initializes the GCNEncoder with configurable options for feature projection, dropout, and domain-specific batch normalization (DSBN).
-
-        Parameters
-        ----------
-        in_channels : int
-            Number of input feature dimensions (length of each node's feature vector).
-        hidden_dims : list[int]
-            List of output dimensions for each hidden layer in the GCN.
-        latent_dim : int
-            Dimension of the latent feature representation produced by the encoder.
-        use_FCencoder : bool
-            Whether to use a fully connected encoder (FC encoder) before the GCN layers.
-        drop_feature_rate : float
-            Dropout rate for node features during augmentation.
-        drop_edge_rate : float
-            Dropout rate for edges during augmentation.
-        svd_q : int
-            Rank for the low-rank SVD approximation used in augmentations.
-        dropout : float, optional
-            Dropout rate applied to GCN layers, default is 0.2.
-        num_domains : int, optional
-            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used. Default is 1.
-        used_edge_weight : bool, optional
-            Whether to use edge weights in the GCN layers. Default is False.
-        used_DSBN : bool, optional
-            Whether to use domain-specific batch normalization (DSBN). Default is False.
         """
         super(GCNEncoder, self).__init__()
 

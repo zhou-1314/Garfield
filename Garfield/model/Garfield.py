@@ -19,150 +19,147 @@ from ..trainer.trainer import GarfieldTrainer
 class Garfield(torch.nn.Module, BaseModelMixin):
     """
     Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding
+
+    Parameters
+    ----------
+    adata_list : list
+        List of AnnData objects containing data from multiple batches or samples.
+    profile : str
+        Specifies the data profile type (e.g., 'RNA', 'ATAC', 'ADT', 'multi-modal', 'spatial').
+    data_type : str
+        Type of the multi-omics dataset (e.g., Paired, UnPaired) for preprocessing.
+    sub_data_type : list[str]
+        List of data types for multi-modal datasets (e.g., ['rna', 'atac'] or ['rna', 'adt']).
+    sample_col : str
+        Column in the dataset that indicates batch or sample identifiers (default: 'batch').
+    weight : float or None
+        Weighting factor that determines the contribution of different modalities or types of graphs in multi-omics or spatial data.
+        - For non-spatial single-cell multi-omics data (e.g., RNA + ATAC),
+        `weight` specifies the contribution of the graph constructed from RNA data.
+        The remaining (1 - weight) represents the contribution from the other modality.
+        - For spatial single-modality data,
+        `weight` refers to the contribution of the graph constructed from the physical spatial information,
+        while (1 - weight) reflects the contribution from the molecular graph.
+    graph_const_method : str
+        Method for constructing the graph (e.g., 'mu_std', 'Radius', 'KNN', 'Squidpy').
+    genome : str
+        Reference genome to use during preprocessing (e.g., 'mm10', 'mm9', 'hg38', 'hg19').
+    use_gene_weight : bool
+        Whether to apply gene weights in the preprocessing step.
+    use_top_pcs : bool
+        Whether to use the top principal components during gene score preprocessing step.
+    used_hvg : bool
+        Whether to use highly variable genes (HVGs) for analysis.
+    min_features : int
+        Minimum number of features required for a cell to be included in the dataset.
+    min_cells : int
+        Minimum number of cells required for a feature to be retained in the dataset.
+    keep_mt : bool
+        Whether to retain mitochondrial genes in the analysis.
+    target_sum : float
+        Target sum used for normalization (e.g., 1e4 for counts per cell).
+    rna_n_top_features : int
+        Number of top features to retain for RNA datasets (e.g., 3000).
+    atac_n_top_features : int
+        Number of top features to retain for ATAC datasets (e.g., 10000).
+    n_components : int
+        Number of components to use for dimensionality reduction (e.g., PCA).
+    n_neighbors : int
+        Number of neighbors to use in graph-based algorithms (e.g., KNN).
+    metric : str
+        Distance metric used during graph construction (e.g., 'correlation', 'euclidean').
+    svd_solver : str
+        Solver for singular value decomposition (SVD), such as 'arpack' or 'randomized'.
+    adj_key : str
+        Key in the AnnData object that holds the adjacency matrix.
+    edge_val_ratio : float
+        Ratio of edges to use for validation in edge-level tasks.
+    edge_test_ratio : float
+        Ratio of edges to use for testing in edge-level tasks.
+    node_val_ratio : float
+        Ratio of nodes to use for validation in node-level tasks.
+    node_test_ratio : float
+        Ratio of nodes to use for testing in node-level tasks.
+    augment_type : str
+        Type of augmentation to use (e.g., 'dropout', 'svd').
+    svd_q : int
+        Rank for the low-rank SVD approximation.
+    use_FCencoder : bool
+        Whether to use a fully connected encoder before the graph layers.
+    hidden_dims : list[int]
+        List of hidden layer dimensions for the encoder.
+    bottle_neck_neurons : int
+        Number of neurons in the bottleneck (latent) layer.
+    num_heads : int
+        Number of attention heads for each graph attention layer.
+    dropout : float
+        Dropout rate applied during training.
+    concat : bool
+        Whether to concatenate attention heads or not.
+    drop_feature_rate : float
+        Dropout rate applied to node features.
+    drop_edge_rate : float
+        Dropout rate applied to edges during augmentation.
+    used_edge_weight : bool
+        Whether to use edge weights in the graph layers.
+    used_DSBN : bool
+        Whether to use domain-specific batch normalization.
+    conv_type : str
+        Type of graph convolution to use ('GATv2Conv', 'GAT', 'GCN').
+    gnn_layer : int
+        Number of times the encoder is repeated in the forward pass, not the number of GNN layers.
+    cluster_num : int
+        Number of clusters for latent feature clustering.
+    num_neighbors : int
+        Number of neighbors to sample for graph-based data loaders.
+    loaders_n_hops : int
+        Number of hops for neighbors during graph construction.
+    edge_batch_size : int
+        Batch size for edge-level tasks.
+    node_batch_size : int
+        Batch size for node-level tasks.
+    include_edge_recon_loss : bool
+        Whether to include edge reconstruction loss in the training objective.
+    include_gene_expr_recon_loss : bool
+        Whether to include gene expression reconstruction loss in the training objective.
+    used_mmd : bool
+        Whether to use maximum mean discrepancy (MMD) for domain adaptation.
+    lambda_latent_contrastive_instanceloss : float
+        Weight for the instance-level contrastive loss.
+    lambda_latent_contrastive_clusterloss : float
+        Weight for the cluster-level contrastive loss.
+    lambda_gene_expr_recon : float
+        Weight for the gene expression reconstruction loss.
+    lambda_edge_recon : float
+        Weight for the edge reconstruction loss.
+    lambda_omics_recon_mmd_loss : float
+        Weight for the MMD loss in omics reconstruction tasks.
+    n_epochs : int
+        Number of training epochs.
+    n_epochs_no_edge_recon : int
+        Number of epochs without edge reconstruction loss.
+    learning_rate : float
+        Learning rate for the optimizer.
+    weight_decay : float
+        Weight decay (L2 regularization) for the optimizer.
+    gradient_clipping : float
+        Maximum norm for gradient clipping.
+    latent_key : str
+        Key for storing latent features in the AnnData object.
+    reload_best_model : bool
+        Whether to reload the best model after training.
+    use_early_stopping : bool
+        Whether to use early stopping during training.
+    early_stopping_kwargs : dict
+        Arguments for configuring early stopping (e.g., patience, delta).
+    monitor : bool
+        Whether to print training progress.
+    seed : int
+        Random seed for reproducibility.
+    verbose : bool
+        Whether to display detailed logs during training.
     """
     def __init__(self, gf_params):
-        """"
-        Garfield Model Parameters, which are included in gf_params.
-
-        Parameters
-        ----------
-        adata_list : list
-            List of AnnData objects containing data from multiple batches or samples.
-        profile : str
-            Specifies the data profile type (e.g., 'RNA', 'ATAC', 'ADT', 'multi-modal', 'spatial').
-        data_type : str
-            Type of the multi-omics dataset (e.g., Paired, UnPaired) for preprocessing.
-        sub_data_type : list[str]
-            List of data types for multi-modal datasets (e.g., ['rna', 'atac'] or ['rna', 'adt']).
-        sample_col : str
-            Column in the dataset that indicates batch or sample identifiers (default: 'batch').
-        weight : float or None
-            Weighting factor that determines the contribution of different modalities or types of graphs in multi-omics or spatial data.
-            - For non-spatial single-cell multi-omics data (e.g., RNA + ATAC),
-            `weight` specifies the contribution of the graph constructed from RNA data.
-            The remaining (1 - weight) represents the contribution from the other modality.
-            - For spatial single-modality data,
-            `weight` refers to the contribution of the graph constructed from the physical spatial information,
-            while (1 - weight) reflects the contribution from the molecular graph.
-        graph_const_method : str
-            Method for constructing the graph (e.g., 'mu_std', 'Radius', 'KNN', 'Squidpy').
-        genome : str
-            Reference genome to use during preprocessing (e.g., 'mm10', 'mm9', 'hg38', 'hg19').
-        use_gene_weight : bool
-            Whether to apply gene weights in the preprocessing step.
-        use_top_pcs : bool
-            Whether to use the top principal components during gene score preprocessing step.
-        used_hvg : bool
-            Whether to use highly variable genes (HVGs) for analysis.
-        min_features : int
-            Minimum number of features required for a cell to be included in the dataset.
-        min_cells : int
-            Minimum number of cells required for a feature to be retained in the dataset.
-        keep_mt : bool
-            Whether to retain mitochondrial genes in the analysis.
-        target_sum : float
-            Target sum used for normalization (e.g., 1e4 for counts per cell).
-        rna_n_top_features : int
-            Number of top features to retain for RNA datasets (e.g., 3000).
-        atac_n_top_features : int
-            Number of top features to retain for ATAC datasets (e.g., 10000).
-        n_components : int
-            Number of components to use for dimensionality reduction (e.g., PCA).
-        n_neighbors : int
-            Number of neighbors to use in graph-based algorithms (e.g., KNN).
-        metric : str
-            Distance metric used during graph construction (e.g., 'correlation', 'euclidean').
-        svd_solver : str
-            Solver for singular value decomposition (SVD), such as 'arpack' or 'randomized'.
-        adj_key : str
-            Key in the AnnData object that holds the adjacency matrix.
-        edge_val_ratio : float
-            Ratio of edges to use for validation in edge-level tasks.
-        edge_test_ratio : float
-            Ratio of edges to use for testing in edge-level tasks.
-        node_val_ratio : float
-            Ratio of nodes to use for validation in node-level tasks.
-        node_test_ratio : float
-            Ratio of nodes to use for testing in node-level tasks.
-        augment_type : str
-            Type of augmentation to use (e.g., 'dropout', 'svd').
-        svd_q : int
-            Rank for the low-rank SVD approximation.
-        use_FCencoder : bool
-            Whether to use a fully connected encoder before the graph layers.
-        hidden_dims : list[int]
-            List of hidden layer dimensions for the encoder.
-        bottle_neck_neurons : int
-            Number of neurons in the bottleneck (latent) layer.
-        num_heads : int
-            Number of attention heads for each graph attention layer.
-        dropout : float
-            Dropout rate applied during training.
-        concat : bool
-            Whether to concatenate attention heads or not.
-        drop_feature_rate : float
-            Dropout rate applied to node features.
-        drop_edge_rate : float
-            Dropout rate applied to edges during augmentation.
-        used_edge_weight : bool
-            Whether to use edge weights in the graph layers.
-        used_DSBN : bool
-            Whether to use domain-specific batch normalization.
-        conv_type : str
-            Type of graph convolution to use ('GATv2Conv', 'GAT', 'GCN').
-        gnn_layer : int
-            Number of times the encoder is repeated in the forward pass, not the number of GNN layers.
-        cluster_num : int
-            Number of clusters for latent feature clustering.
-        num_neighbors : int
-            Number of neighbors to sample for graph-based data loaders.
-        loaders_n_hops : int
-            Number of hops for neighbors during graph construction.
-        edge_batch_size : int
-            Batch size for edge-level tasks.
-        node_batch_size : int
-            Batch size for node-level tasks.
-        include_edge_recon_loss : bool
-            Whether to include edge reconstruction loss in the training objective.
-        include_gene_expr_recon_loss : bool
-            Whether to include gene expression reconstruction loss in the training objective.
-        used_mmd : bool
-            Whether to use maximum mean discrepancy (MMD) for domain adaptation.
-        lambda_latent_contrastive_instanceloss : float
-            Weight for the instance-level contrastive loss.
-        lambda_latent_contrastive_clusterloss : float
-            Weight for the cluster-level contrastive loss.
-        lambda_gene_expr_recon : float
-            Weight for the gene expression reconstruction loss.
-        lambda_edge_recon : float
-            Weight for the edge reconstruction loss.
-        lambda_omics_recon_mmd_loss : float
-            Weight for the MMD loss in omics reconstruction tasks.
-        n_epochs : int
-            Number of training epochs.
-        n_epochs_no_edge_recon : int
-            Number of epochs without edge reconstruction loss.
-        learning_rate : float
-            Learning rate for the optimizer.
-        weight_decay : float
-            Weight decay (L2 regularization) for the optimizer.
-        gradient_clipping : float
-            Maximum norm for gradient clipping.
-        latent_key : str
-            Key for storing latent features in the AnnData object.
-        reload_best_model : bool
-            Whether to reload the best model after training.
-        use_early_stopping : bool
-            Whether to use early stopping during training.
-        early_stopping_kwargs : dict
-            Arguments for configuring early stopping (e.g., patience, delta).
-        monitor : bool
-            Whether to print training progress.
-        seed : int
-            Random seed for reproducibility.
-        verbose : bool
-            Whether to display detailed logs during training.
-        """
         super(Garfield, self).__init__()
         if gf_params is None:
             gf_params = settings.gf_params.copy()

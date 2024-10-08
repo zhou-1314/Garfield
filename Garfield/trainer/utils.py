@@ -12,7 +12,6 @@ import numpy as np
 class EarlyStopping:
     """
     EarlyStopping class for early stopping of NicheCompass training.
-
     Parts of the implementation are adapted from
     https://github.com/theislab/scarches/blob/cb54fa0df3255ad1576a977b17e9d77d4907ceb0/scarches/utils/monitor.py#L4
     (01.10.2022).
@@ -35,7 +34,6 @@ class EarlyStopping:
     lr_factor:
         Scaling factor for adjusting the learning rate.
      """
-
     def __init__(self,
                  early_stopping_metric: str = "val_global_loss",
                  metric_improvement_threshold: float = 0.,

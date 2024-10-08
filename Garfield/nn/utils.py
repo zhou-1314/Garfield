@@ -18,17 +18,19 @@ def drop_feature(x, drop_prob):
 class DSBatchNorm(nn.Module):
     """
     Domain-specific Batch Normalization
-    """
 
+    Parameters
+    ----------
+    num_features
+        dimension of the features
+    n_domain
+        domain number
+    eps
+        a value added to the denominator for numerical stability
+    momentum
+        the value used for the running_mean and running_var computation
+    """
     def __init__(self, num_features, n_domain, eps=1e-5, momentum=0.1):
-        """
-        Parameters
-        ----------
-        num_features
-            dimension of the features
-        n_domain
-            domain number
-        """
         super().__init__()
         self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
         self.n_domain = n_domain

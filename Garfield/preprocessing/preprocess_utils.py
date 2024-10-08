@@ -367,29 +367,46 @@ def preprocessing(
         verbose: bool = True
 ):
     """
-    Preprocessing single-cell data
+    Preprocessing function for single-cell and multi-modal data.
 
     Parameters
     ----------
-    adata
-        An AnnData matrice of shape n_obs x n_vars. Rows correspond to cells and columns to genes.
-    profile
-        Specify the single-cell profile type, RNA or ATAC, Default: RNA.
-    min_features
-        Filtered out cells that are detected in less than n genes. Default: 100.
-    min_cells
-        Filtered out genes that are detected in less than n cells. Default: 3.
-    target_sum
-        After normalization, each cell has a total count equal to target_sum. If None, total count of each cell equal to the median of total counts for cells before normalization.
-    n_top_features
-        Number of highly-variable genes to keep. Default: 2000.
-    log
-        If log, record each operation in the log file. Default: None.
+    adata : [AnnData, MuData]
+        The annotated data matrix of shape n_obs x n_vars. Rows correspond to cells and columns to genes.
+    profile : str, optional
+        The profile type, by default 'RNA'.
+    data_type : str, optional
+        The data type, by default 'Paired'.
+    sub_data_type : list of str, optional
+        The sub data types, by default ['rna', 'atac'].
+    batch_key : str, optional
+        The batch key, by default 'batch'.
+    weight : float, optional
+        The weight for combining adjacency matrices, by default 0.8.
+    used_hvgs : bool, optional
+        Whether to use highly variable genes, by default True.
+    graph_const_method : str, optional
+        The method for graph construction of spatial data, by default None.
+    genome : str, optional
+        The genome reference, by default None.
+    use_gene_weigt : bool, optional
+        Whether to use gene weight, by default True.
+    use_top_pcs : bool, optional
+        Whether to use top principal components, by default False.
+    min_features : int, optional
+        Minimum number of features, by default 600.
+    min_cells : int, optional
+        Minimum number of cells, by default 3.
+    target_sum : int, optional
+        Target sum for normalization, by default None.
+    rna_n_top_features : int or list, optional
+        Number of top features for RNA, by default None.
+    atac_n_top_features : int or list, optional
+        Number of top features for ATAC, by default None.
 
     Return
     -------
     The AnnData object after preprocessing.
-
     """
     if profile == 'RNA':
         return preprocessing_rna(

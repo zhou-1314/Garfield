@@ -15,51 +15,50 @@ from .loss import compute_omics_recon_mse_loss, compute_omics_recon_mmd_loss, co
 
 # Based on VGAE class in PyTorch Geometric
 class GNNModelVAE(GAE):
+    """
+    Garfield model class. This class contains the implementation of GNNModel Variational Auto-encoder.
+
+    Parameters
+    ----------
+    encoder : nn.Module
+        The encoder module used in the variational graph autoencoder. 'GAT' or 'GCN'.
+    bottle_neck_neurons : int
+        Number of neurons in the bottleneck layer representing the latent dimension.
+    hidden_dims : int
+        Number of hidden dimensions for the encoder.
+    feature_dim : int
+        Number of feature dimensions in the input data.
+    num_heads : int
+        Number of attention heads used in the GAT encoder.
+    dropout : float
+        Dropout rate used in the encoder and decoder.
+    concat : bool
+        Whether to concatenate outputs of different attention heads.
+    n_domain : int
+        Number of domains for domain-specific batch normalization (DSBN).
+    used_edge_weight : bool
+        Whether to use edge weights in the graph convolution operation.
+    used_DSBN : bool
+        Whether to use domain-specific batch normalization (DSBN).
+    conv_type : str
+        Type of graph convolution to use, e.g., 'GAT', 'GATv2Conv', 'GCN'.
+    gnn_layer : int, optional
+        Number of layers in the GNN encoder. Default is 2.
+    cluster_num : int, optional
+        Number of clusters for the clustering layer. Default is 20.
+    include_edge_recon_loss : bool, optional
+        Whether to include edge reconstruction loss in the model. Default is True.
+    include_gene_expr_recon_loss : bool, optional
+        Whether to include gene expression reconstruction loss in the model. Default is True.
+    used_mmd : bool, optional
+        Whether to use MMD (Maximum Mean Discrepancy) loss for domain adaptation. Default is False.
+    """
     def __init__(self, encoder, bottle_neck_neurons, hidden_dims, feature_dim,
                  num_heads, dropout, concat, n_domain, used_edge_weight, used_DSBN,
                  conv_type, gnn_layer=2, cluster_num=20, include_edge_recon_loss=True,
                  include_gene_expr_recon_loss=True, used_mmd=False
                  ):
-        """
-        Garfield model class. This class contains the implementation of GNNModel Variational Auto-encoder.
-
-        Parameters
-        ----------
-        encoder : nn.Module
-            The encoder module used in the variational graph autoencoder. 'GAT' or 'GCN'.
-        bottle_neck_neurons : int
-            Number of neurons in the bottleneck layer representing the latent dimension.
-        hidden_dims : int
-            Number of hidden dimensions for the encoder.
-        feature_dim : int
-            Number of feature dimensions in the input data.
-        num_heads : int
-            Number of attention heads used in the GAT encoder.
-        dropout : float
-            Dropout rate used in the encoder and decoder.
-        concat : bool
-            Whether to concatenate outputs of different attention heads.
-        n_domain : int
-            Number of domains for domain-specific batch normalization (DSBN).
-        used_edge_weight : bool
-            Whether to use edge weights in the graph convolution operation.
-        used_DSBN : bool
-            Whether to use domain-specific batch normalization (DSBN).
-        conv_type : str
-            Type of graph convolution to use, e.g., 'GAT', 'GATv2Conv', 'GCN'.
-        gnn_layer : int, optional
-            Number of layers in the GNN encoder. Default is 2.
-        cluster_num : int, optional
-            Number of clusters for the clustering layer. Default is 20.
-        include_edge_recon_loss : bool, optional
-            Whether to include edge reconstruction loss in the model. Default is True.
-        include_gene_expr_recon_loss : bool, optional
-            Whether to include gene expression reconstruction loss in the model. Default is True.
-        used_mmd : bool, optional
-            Whether to use MMD (Maximum Mean Discrepancy) loss for domain adaptation. Default is False.
-        """
         super(GNNModelVAE, self).__init__(encoder)
-
         # model configurations
         self.encoder = encoder
         self.latent = bottle_neck_neurons

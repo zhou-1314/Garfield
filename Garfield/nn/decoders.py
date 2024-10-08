@@ -17,35 +17,34 @@ class GATDecoder(nn.Module):
     from latent representations. It supports domain-specific batch normalization
     (DSBN) and edge weights.
 
+    Parameters
+    ----------
+    in_channels : int
+        Number of input feature dimensions.
+    hidden_dims : list[int]
+        List of output dimensions for each hidden GAT layer, in ascending order.
+    out_channels : int
+        Number of output feature dimensions.
+    conv_type : str
+        Type of GAT convolution layer to use ('GAT' or 'GATv2Conv').
+    num_heads : int
+        Number of attention heads for each GAT layer.
+    dropout : float
+        Dropout rate applied to GAT layers.
+    concat : bool
+        Whether to concatenate the output of all attention heads or not.
+    num_domains : int or str
+        Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+    used_edge_weight : bool, optional
+        Whether to use edge weights in the GAT layers. Default is False.
+    used_DSBN : bool, optional
+        Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
     def __init__(self, in_channels, hidden_dims, out_channels, conv_type, num_heads, dropout, concat,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
         """
         Initializes the GATDecoder, which consists of multiple Graph Attention Network (GAT) layers
         followed by domain-specific normalization (if applicable).
-
-        Parameters
-        ----------
-        in_channels : int
-            Number of input feature dimensions.
-        hidden_dims : list[int]
-            List of output dimensions for each hidden GAT layer, in ascending order.
-        out_channels : int
-            Number of output feature dimensions.
-        conv_type : str
-            Type of GAT convolution layer to use ('GAT' or 'GATv2Conv').
-        num_heads : int
-            Number of attention heads for each GAT layer.
-        dropout : float
-            Dropout rate applied to GAT layers.
-        concat : bool
-            Whether to concatenate the output of all attention heads or not.
-        num_domains : int or str
-            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
-        used_edge_weight : bool, optional
-            Whether to use edge weights in the GAT layers. Default is False.
-        used_DSBN : bool, optional
-            Whether to use domain-specific batch normalization (DSBN). Default is False.
         """
         super(GATDecoder, self).__init__()
         self.used_DSBN = used_DSBN
@@ -151,28 +150,27 @@ class GCNDecoder(nn.Module):
     from latent representations. It supports domain-specific batch normalization
     (DSBN) and edge weights.
 
+    Parameters
+    ----------
+    in_channels : int
+        Number of input feature dimensions.
+    hidden_dims : list[int]
+        List of output dimensions for each hidden GCN layer, in ascending order.
+    out_channels : int
+        Number of output feature dimensions.
+    dropout : float, optional
+        Dropout rate applied to GCN layers. Default is 0.2.
+    num_domains : int or str
+        Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
+    used_edge_weight : bool, optional
+        Whether to use edge weights in the GCN layers. Default is False.
+    used_DSBN : bool, optional
+        Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
     def __init__(self, in_channels, hidden_dims, out_channels, dropout=0.2,
                  num_domains='', used_edge_weight=False, used_DSBN=False):
         """
         Initializes the GCNDecoder, consisting of multiple Graph Convolutional Network (GCN) layers followed by domain-specific normalization (if applicable).
-
-        Parameters
-        ----------
-        in_channels : int
-            Number of input feature dimensions.
-        hidden_dims : list[int]
-            List of output dimensions for each hidden GCN layer, in ascending order.
-        out_channels : int
-            Number of output feature dimensions.
-        dropout : float, optional
-            Dropout rate applied to GCN layers. Default is 0.2.
-        num_domains : int or str
-            Number of domains for domain-specific batch normalization (DSBN). If `1`, regular batch normalization is used.
-        used_edge_weight : bool, optional
-            Whether to use edge weights in the GCN layers. Default is False.
-        used_DSBN : bool, optional
-            Whether to use domain-specific batch normalization (DSBN). Default is False.
         """
         super(GCNDecoder, self).__init__()
         # 如果 hidden_channels 是单一数字，将其转换成单元素列表

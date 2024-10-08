@@ -824,7 +824,8 @@ def gene_scores(adata,
                 use_gene_weigt=True,
                 min_w=1,
                 max_w=5):
-    """Calculate gene scores
+    """
+    Calculate gene scores of scATACseq data
 
     Parameters
     ----------

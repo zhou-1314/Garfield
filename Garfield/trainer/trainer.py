@@ -39,7 +39,53 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch_geometric"
 
 class GarfieldTrainer(BaseMixin):
     """
-    Garfield model trainer.
+    Initializes the GarfieldTrainer class, which handles data preparation, model initialization,
+    and training of the Garfield model.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data matrix.
+    model : nn.Module
+        The Garfield model to be trained.
+    label_name : str
+        Column name for labels in the annotated data.
+    used_pca_feat : Bool
+        Whether used pca features or not for node feature.
+    adj_key : str
+        Key for the adjacency matrix (e.g., spatial connectivity) in the data.
+    edge_val_ratio : float
+        Proportion of edges to use for validation in edge-level tasks.
+    edge_test_ratio : float
+        Proportion of edges to use for testing in edge-level tasks.
+    node_val_ratio : float
+        Proportion of nodes to use for validation in node-level tasks.
+    node_test_ratio : float
+        Proportion of nodes to use for testing in node-level tasks.
+    augment_type : str
+        Type of data augmentation to apply (e.g., 'dropout', 'svd').
+    num_neighbors : int
+        Number of neighbors to sample for each node in graph-based tasks.
+    loaders_n_hops : int
+        Number of hops to consider for neighbors in graph-based tasks.
+    edge_batch_size : int
+        Batch size for edge-level tasks.
+    node_batch_size : int or None
+        Batch size for node-level tasks. If None, it will be determined automatically.
+    reload_best_model : bool
+        Whether to reload the best model after training.
+    use_early_stopping : bool
+        Whether to apply early stopping during training.
+    early_stopping_kwargs : dict
+        Additional arguments for early stopping (e.g., patience, delta).
+    monitor : bool
+        Whether to print monitoring logs during training.
+    verbose : bool
+        Whether to print detailed logs during training.
+    seed : int
+        Seed for random number generation to ensure reproducibility.
+    kwargs : dict
+        Additional arguments for training configuration.
     """
     def __init__(self,
                  adata,
@@ -63,55 +109,6 @@ class GarfieldTrainer(BaseMixin):
                  verbose,
                  seed,
                  **kwargs):
-        """
-        Initializes the GarfieldTrainer class, which handles data preparation, model initialization,
-        and training of the Garfield model.
-
-        Parameters
-        ----------
-        adata : AnnData
-            Annotated data matrix.
-        model : nn.Module
-            The Garfield model to be trained.
-        label_name : str
-            Column name for labels in the annotated data.
-        used_pca_feat : Bool
-            Whether used pca features or not for node feature.
-        adj_key : str
-            Key for the adjacency matrix (e.g., spatial connectivity) in the data.
-        edge_val_ratio : float
-            Proportion of edges to use for validation in edge-level tasks.
-        edge_test_ratio : float
-            Proportion of edges to use for testing in edge-level tasks.
-        node_val_ratio : float
-            Proportion of nodes to use for validation in node-level tasks.
-        node_test_ratio : float
-            Proportion of nodes to use for testing in node-level tasks.
-        augment_type : str
-            Type of data augmentation to apply (e.g., 'dropout', 'svd').
-        num_neighbors : int
-            Number of neighbors to sample for each node in graph-based tasks.
-        loaders_n_hops : int
-            Number of hops to consider for neighbors in graph-based tasks.
-        edge_batch_size : int
-            Batch size for edge-level tasks.
-        node_batch_size : int or None
-            Batch size for node-level tasks. If None, it will be determined automatically.
-        reload_best_model : bool
-            Whether to reload the best model after training.
-        use_early_stopping : bool
-            Whether to apply early stopping during training.
-        early_stopping_kwargs : dict
-            Additional arguments for early stopping (e.g., patience, delta).
-        monitor : bool
-            Whether to print monitoring logs during training.
-        verbose : bool
-            Whether to print detailed logs during training.
-        seed : int
-            Seed for random number generation to ensure reproducibility.
-        kwargs : dict
-            Additional arguments for training configuration.
-        """
         self.adata = adata
         self.model = model
         self.label_name_ = label_name
