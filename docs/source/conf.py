@@ -14,21 +14,16 @@ import os
 import sys
 from datetime import datetime
 
+# sys.path.insert(0, os.path.abspath('./Garfield'))
 sys.path.insert(0, os.path.abspath('../Garfield'))
 sys.path.insert(0, os.path.abspath('_ext'))
 
 import Garfield  # noqa: E402
-# print("Garfield module path:", Garfield.__file__)
-# print("Current sys.path:", sys.path)
-
-# import Garfield.data  # 确保导入后再检查
-# print("Modules loaded:", list(sys.modules.keys()))
-
 
 # -- Project information -----------------------------------------------------
 project = 'Garfield'
 author = 'Weige Zhou'
-copyright = f'{datetime.now():%Y}, {author}'
+copyright = f'{datetime.now():%Y}, {author}.'
 
 # The full version, including alpha/beta/rc tags
 release = Garfield.__version__
