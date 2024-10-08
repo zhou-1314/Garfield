@@ -57,7 +57,7 @@ def read_scData(path, backed=False):
         the path store the file
 
     Return
-    ------
+    ----------
     AnnData
     """
     if path is not None:
@@ -101,7 +101,7 @@ def read_multi_scData(root):
         the root store the single-cell data files, each file represent one dataset
 
     Return
-    ------
+    ----------
     AnnData
     """
     if root.split('/')[-1] == '*':
@@ -139,7 +139,7 @@ def concat_data(
         Path to save the new merged AnnData. Default: None.
 
     Returns
-    -------
+    ----------
     New merged AnnData.
     """
     if len(data_list) == 1:
