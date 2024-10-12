@@ -1,4 +1,11 @@
 # Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
+
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/zhou-1314/Garfield/blob/main/LICENSE)
+[![Stars](https://img.shields.io/github/stars/Lotfollahi-lab/nichecompass?logo=GitHub&color=yellow)](https://github.com/Lotfollahi-lab/nichecompass/stargazers)
+[![PyPI](https://img.shields.io/pypi/v/nichecompass.svg)](https://pypi.org/project/Garfield)
+[![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)
+[![Docs](https://readthedocs.org/projects/nichecompass/badge/?version=latest)](https://nichecompass.readthedocs.io/en/stable/?badge=stable)
+
 <img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
 
 ## Installation
