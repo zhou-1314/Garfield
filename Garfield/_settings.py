@@ -116,6 +116,7 @@ class GarfieldConfig:
             'graph_const_method': 'mu_std',
             'genome': None,
             'use_gene_weight': True,
+            'user_cache_path': self.workdir,
             'use_top_pcs': False,
             'used_hvg': True,
             'min_features': 100,
@@ -164,7 +165,8 @@ class GarfieldConfig:
             'lambda_latent_contrastive_instanceloss': 1.0,
             'lambda_latent_contrastive_clusterloss': 0.5,
             'lambda_gene_expr_recon': 300.,
-            'lambda_edge_recon': 500000.,
+            'lambda_latent_adj_recon_loss': 1.0,
+            'lambda_edge_recon': 500.,
             'lambda_omics_recon_mmd_loss': 0.2,
             # train parameters
             'n_epochs': 100,
@@ -178,9 +180,9 @@ class GarfieldConfig:
             'use_early_stopping': True,
             'early_stopping_kwargs': None,
             'monitor': True,
+            'device_id': 0,
             'seed': 2024,
             'verbose': False,
-            # 'loader_type': 'graphsaint',
         }
 
         ## user_config

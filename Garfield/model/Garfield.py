@@ -70,6 +70,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         Distance metric used during graph construction (e.g., 'correlation', 'euclidean').
     svd_solver : str
         Solver for singular value decomposition (SVD), such as 'arpack' or 'randomized'.
+    used_pca_feat: bool
+        Whether to use PCA or LSI features for the encoder.
     adj_key : str
         Key in the AnnData object that holds the adjacency matrix.
     edge_val_ratio : float
@@ -130,6 +132,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         Weight for the cluster-level contrastive loss.
     lambda_gene_expr_recon : float
         Weight for the gene expression reconstruction loss.
+    lambda_latent_adj_recon_loss : float
+        Weight for the adjacency reconstruction loss.
     lambda_edge_recon : float
         Weight for the edge reconstruction loss.
     lambda_omics_recon_mmd_loss : float
@@ -154,6 +158,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         Arguments for configuring early stopping (e.g., patience, delta).
     monitor : bool
         Whether to print training progress.
+    device_id: int
+        Device ID for GPU training.
     seed : int
         Random seed for reproducibility.
     verbose : bool
@@ -177,6 +183,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.graph_const_method_ = self.args.graph_const_method
         self.genome_ = self.args.genome
         self.use_gene_weight_ = self.args.use_gene_weight
+        self.user_cache_path_ = self.args.user_cache_path
         self.use_top_pcs_ = self.args.use_top_pcs
         self.used_hvg_ = self.args.used_hvg
         self.min_features_ = self.args.min_features
@@ -226,6 +233,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.lambda_latent_contrastive_instanceloss_ = self.args.lambda_latent_contrastive_instanceloss
         self.lambda_latent_contrastive_clusterloss_ = self.args.lambda_latent_contrastive_clusterloss
         self.lambda_gene_expr_recon_ = self.args.lambda_gene_expr_recon
+        self.lambda_latent_adj_recon_loss_ = self.args.lambda_latent_adj_recon_loss
         self.lambda_edge_recon_ = self.args.lambda_edge_recon
         self.lambda_omics_recon_mmd_loss_ = self.args.lambda_omics_recon_mmd_loss
         # train parameters
@@ -241,6 +249,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.early_stopping_kwargs_ = self.args.early_stopping_kwargs
         self.monitor_ = self.args.monitor
         self.seed_ = self.args.seed
+        self.device_id_ = self.args.device_id
         self.verbose_ = self.args.verbose
 
         # Set seed for reproducibility
@@ -262,7 +271,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             genome=self.genome_,
             weight=self.weight_,
             graph_const_method=self.graph_const_method_,
-            use_gene_weigt=self.use_gene_weight_,
+            use_gene_weight=self.use_gene_weight_,
+            user_cache_path=self.user_cache_path_,
             use_top_pcs=self.use_top_pcs_,
             used_hvg=self.used_hvg_,
             min_features=self.min_features_,
@@ -283,7 +293,10 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             self.num_features_ = self.adata.obsm['feat'].shape[1]
 
         if self.sample_col_ is not None:
-            self.n_domain_ = len(self.adata.obs[self.sample_col_].unique())
+            try:
+                self.n_domain_ = len(self.adata.obs[self.sample_col_].unique())
+            except KeyError:
+                self.n_domain_ = len(self.adata.obs['rna:' + self.sample_col_].unique())
         else:
             self.n_domain_ = None
         self.setup_layers()
@@ -371,6 +384,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             use_early_stopping=self.use_early_stopping_,
             early_stopping_kwargs=self.early_stopping_kwargs_,
             monitor=self.monitor_,
+            device_id=self.device_id_,
             verbose=self.verbose_,
             seed=self.seed_,
             **trainer_kwargs)
@@ -383,6 +397,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             gradient_clipping=self.gradient_clipping_,
             lambda_edge_recon=self.lambda_edge_recon_,
             lambda_gene_expr_recon=self.lambda_gene_expr_recon_,
+            lambda_latent_adj_recon_loss=self.lambda_latent_adj_recon_loss_,
             lambda_latent_contrastive_instanceloss=self.lambda_latent_contrastive_instanceloss_,
             lambda_latent_contrastive_clusterloss=self.lambda_latent_contrastive_clusterloss_,
             lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_
@@ -404,7 +419,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
     def get_latent_representation(
             self,
             adata: Optional[AnnData] = None,
-            adj_key: str = "spatial_connectivities",
+            adj_key: str = "connectivities",
             return_mu_std: bool = False,
             node_batch_size: int = 64,
             dtype: type = np.float64,
@@ -517,6 +532,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             'graph_const_method': dct['graph_const_method_'],
             'genome': dct['genome_'],
             'use_gene_weight': dct['use_gene_weight_'],
+            'user_cache_path': dct['user_cache_path_'],
             'use_top_pcs': dct['use_top_pcs_'],
             'used_hvg': dct['used_hvg_'],
             'min_features': dct['min_features_'],
@@ -529,6 +545,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             'n_neighbors': dct['n_neighbors_'],
             'metric': dct['metric_'],
             'svd_solver': dct['svd_solver_'],
+            'used_pca_feat': dct['used_pca_feat_'],
             'adj_key': dct['adj_key_'],
             # data split parameters
             'edge_val_ratio': dct['edge_val_ratio_'],
@@ -563,6 +580,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             'lambda_latent_contrastive_instanceloss': dct['lambda_latent_contrastive_instanceloss_'],
             'lambda_latent_contrastive_clusterloss': dct['lambda_latent_contrastive_clusterloss_'],
             'lambda_gene_expr_recon': dct['lambda_gene_expr_recon_'],
+            'lambda_latent_adj_recon_loss': dct['lambda_latent_adj_recon_loss_'],
             'lambda_edge_recon': dct['lambda_edge_recon_'],
             'lambda_omics_recon_mmd_loss': dct['lambda_omics_recon_mmd_loss_'],
             # train parameters
@@ -577,6 +595,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             'use_early_stopping': dct['use_early_stopping_'],
             'early_stopping_kwargs': dct['early_stopping_kwargs_'],
             'monitor': dct['monitor_'],
+            'device_id': dct['device_id_'],
             'seed': dct['seed_'],
             'verbose': dct['verbose_'],
         }

@@ -45,6 +45,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "nbsphinx",
+    'sphinx_copybutton',
     "edit_on_github",
     ]
 

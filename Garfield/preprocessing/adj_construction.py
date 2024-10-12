@@ -207,6 +207,10 @@ def filter_bad_matches(arr1, arr2, refined_matching=None,
     # fit CCA on pivots
     if verbose:
         print('Fitting CCA on pivots...', flush=True)
+    if svd_components1 >= min(arr1.shape):
+        svd_components1 = min(arr1.shape) - 1
+    if svd_components2 >= min(arr2.shape):
+        svd_components2 = min(arr2.shape) - 1
     rotation_before_cca_on_active_arr1, rotation_before_cca_on_active_arr2 = fit_svd_on_full_data(arr1, arr2, randomized_svd=randomized_svd,
                                                                                                   svd_runs=svd_runs, svd_components1=svd_components1,
                                                                                                   svd_components2=svd_components2)
@@ -431,15 +435,21 @@ def get_matching(pivot2_to_pivots1=None, propidx2_to_propindices1=None, arr1=Non
     return address_matching_redundancy(matching=res, direction=direction)
 
 ## Main function
-def create_adj(rna, atac, rna_adata_shared, atac_adata_shared, data_type='Paired', rna_n_top_features=3000, atac_n_top_features=10000,
+def create_adj(rna, atac, rna_adata_shared, atac_adata_shared, data_type='Paired',
+               rna_n_top_features=3000, atac_n_top_features=10000,
                batch_key=None, svd_components1=30, svd_components2=30,
                cca_components=20, cca_max_iter=2000, randomized_svd=False,
                filter_prop_initial=0, filter_prop_refined=0.3, filter_prop_propagated=0,
                n_iters=1, svd_runs=1, verbose=True):
 
     # Finding initial pivots on all genes or peaks
-    initial_pivots = find_initial_pivots(rna_adata_shared.X, atac_adata_shared.X, svd_components1=svd_components1, svd_components2=svd_components2,
+    # 统计计算时间
+    import time
+    start_time = time.time()
+    initial_pivots = find_initial_pivots(rna_adata_shared.X, atac_adata_shared.X,
+                                         svd_components1=svd_components1, svd_components2=svd_components2,
                                          randomized_svd=randomized_svd, svd_runs=svd_runs, verbose=verbose)
+    print('Finding initial pivots costs {:.2f} seconds.'.format(time.time() - start_time))
 
     # Finding variable features for RNA adata
     if type(rna_n_top_features) == int:
@@ -473,7 +483,8 @@ def create_adj(rna, atac, rna_adata_shared, atac_adata_shared, data_type='Paired
         atac = reindex(atac, atac_n_top_features)
 
     # Refining pivots
-    fine_pivots = refine_pivots(initial_pivots[0], rna.X, atac.X, svd_components1=svd_components1, svd_components2=svd_components2,
+    fine_pivots = refine_pivots(initial_pivots[0], rna.X, atac.X,
+                                svd_components1=svd_components1, svd_components2=svd_components2,
                                 cca_components=cca_components, filter_prop=filter_prop_initial, n_iters=n_iters,
                                 randomized_svd=randomized_svd, svd_runs=svd_runs, cca_max_iter=cca_max_iter, verbose=verbose)
 

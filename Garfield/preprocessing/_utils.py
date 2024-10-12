@@ -317,6 +317,8 @@ def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
     embeddings: array_like of shape (n_samples, n_components)
         Rank-n_comopnents SVD embedding of arr.
     """
+    n_components = min(n_components, min(arr.shape) - 1)  # 确保 n_components 小于矩阵最小维度
+
     if n_components is None:
         return arr
     u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
@@ -574,7 +576,7 @@ class GeneScores:
                  cutoff_weight=1,
                  use_top_pcs=False,
                  use_precomputed=True,
-                 use_gene_weigt=True,
+                 use_gene_weight=True,
                  min_w=1,
                  max_w=5):
         """
@@ -594,7 +596,7 @@ class GeneScores:
         self.cutoff_weight = cutoff_weight
         self.use_top_pcs = use_top_pcs
         self.use_precomputed = use_precomputed
-        self.use_gene_weigt = use_gene_weigt
+        self.use_gene_weight = use_gene_weight
         self.min_w = min_w
         self.max_w = max_w
 
@@ -800,7 +802,7 @@ class GeneScores:
         #                       obs=df_gene_ann,
         #                       var=df_peaks)
         # adata_GP.layers['weight'] = adata_GP.X.copy()
-        if self.use_gene_weigt:
+        if self.use_gene_weight:
             gene_weights = self._weight_genes()
             gene_scores = adata[:, mask_p].X * \
                 (mat_GP.T.multiply(gene_weights))
@@ -821,7 +823,7 @@ def gene_scores(adata,
                 cutoff_weight=1,
                 use_top_pcs=True,
                 use_precomputed=True,
-                use_gene_weigt=True,
+                use_gene_weight=True,
                 min_w=1,
                 max_w=5):
     """
@@ -851,15 +853,15 @@ def gene_scores(adata,
     use_precomputed : `bool`, optional (default: True)
         If True, overlap bewteen peaks and genes
         (stored in `adata.uns['gene_scores']['overlap']`) will be imported
-    use_gene_weigt : `bool`, optional (default: True)
+    use_gene_weight : `bool`, optional (default: True)
         If True, for each gene, the number of peaks assigned to it
         will be rescaled based on gene size
     min_w : `int`, optional (default: 1)
         The minimum weight for each gene.
-        Only valid if `use_gene_weigt` is True
+        Only valid if `use_gene_weight` is True
     max_w : `int`, optional (default: 5)
         The maximum weight for each gene.
-        Only valid if `use_gene_weigt` is True
+        Only valid if `use_gene_weight` is True
 
     Returns
     -------
@@ -880,7 +882,7 @@ def gene_scores(adata,
                     cutoff_weight=cutoff_weight,
                     use_top_pcs=use_top_pcs,
                     use_precomputed=use_precomputed,
-                    use_gene_weigt=use_gene_weigt,
+                    use_gene_weight=use_gene_weight,
                     min_w=min_w,
                     max_w=max_w)
     adata_CG_atac = GS.cal_gene_scores()

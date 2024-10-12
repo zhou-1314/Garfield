@@ -16,7 +16,8 @@ def DataProcess(
          genome=None,
          weight=None,
          graph_const_method=None,
-         use_gene_weigt=True,
+         use_gene_weight=True,
+         user_cache_path=None,
          use_top_pcs=False,
          used_hvg=True,
          min_features=100,
@@ -51,8 +52,10 @@ def DataProcess(
         Weight for certain data processing steps, such as graph construction. Default is None.
     graph_const_method : str, optional
         Method for constructing the graph if applicable, e.g., 'knn'. Default is None.
-    use_gene_weigt : bool, optional
+    use_gene_weight : bool, optional
         Whether to use gene weights in the preprocessing steps. Default is True.
+    user_cache_path : str, optional
+        Path to the user's cache directory. Default is None.
     use_top_pcs : bool, optional
         Whether to use the top principal components during dimensionality reduction. Default is False.
     used_hvg : bool, optional
@@ -112,7 +115,7 @@ def DataProcess(
             profile=profile,
             data_type=data_type,
             genome=genome,
-            use_gene_weigt=use_gene_weigt,
+            use_gene_weight=use_gene_weight,
             use_top_pcs=use_top_pcs,
             used_hvgs=used_hvg,
             min_features=min_features,
@@ -153,8 +156,9 @@ def DataProcess(
             sub_data_type=sub_data_type,
             genome=genome,
             weight=weight,
-            use_gene_weigt=use_gene_weigt,
+            use_gene_weight=use_gene_weight,
             use_top_pcs=use_top_pcs,
+            user_cache_path=user_cache_path,
             used_hvgs=used_hvg,
             min_features=min_features,
             min_cells=min_cells,
@@ -182,7 +186,7 @@ def DataProcess(
             genome=genome,
             weight=weight,
             graph_const_method=graph_const_method,
-            use_gene_weigt=use_gene_weigt,
+            use_gene_weight=use_gene_weight,
             use_top_pcs=use_top_pcs,
             used_hvgs=used_hvg,
             min_features=min_features,

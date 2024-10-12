@@ -6,12 +6,14 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn.functional import normalize
 from torch_geometric.data import Data
-from torch_geometric.nn import GAE
+from torch_geometric.utils import to_dense_adj
+from torch_geometric.utils import (negative_sampling, remove_self_loops, add_self_loops)
+from torch_geometric.nn import GAE, InnerProductDecoder
 
 from .utils import extract_subgraph, to_float_tensor
 from ..nn.decoders import GATDecoder, GCNDecoder, CosineSimGraphDecoder
 from .loss import compute_omics_recon_mse_loss, compute_omics_recon_mmd_loss, compute_edge_recon_loss, \
-    compute_kl_reg_loss, compute_contrastive_instanceloss, compute_contrastive_clusterloss
+    compute_kl_reg_loss, compute_contrastive_instanceloss, compute_contrastive_clusterloss, compute_adj_recon_loss
 
 # Based on VGAE class in PyTorch Geometric
 class GNNModelVAE(GAE):
@@ -97,6 +99,8 @@ class GNNModelVAE(GAE):
         # Initialize graph decoder module
         self.graph_decoder = CosineSimGraphDecoder(
             dropout_rate=self.dropout)
+        # Initialize adj decoder module
+        self.adj_decoder = InnerProductDecoder()
 
         ## 重构表达谱
         if self.conv_type in ['GAT', 'GATv2Conv']:
@@ -210,6 +214,16 @@ class GNNModelVAE(GAE):
             c_1 = self.cluster_projector(z1)
             c_2 = self.cluster_projector(z2)
 
+            ## 重构邻接矩阵
+            pos_adj = self.adj_decoder(z1, data_batch.edge_index, sigmoid=True)
+            # Do not include self-loops in negative samples
+            pos_edge_index = data_batch.edge_index
+            pos_edge_index, _ = remove_self_loops(pos_edge_index)
+            pos_edge_index, _ = add_self_loops(pos_edge_index)
+            # negative_sampling
+            neg_edge_index = negative_sampling(pos_edge_index, z1.size(0))
+            neg_adj = self.adj_decoder(z1, neg_edge_index.long(), sigmoid=True)
+
             ## 重构表达矩阵
             output = {}
             # with torch.no_grad(): ## TODO
@@ -229,6 +243,8 @@ class GNNModelVAE(GAE):
             output["c_2"] = c_2
             output["mu"] = mean1
             output["logstd"] = logstd1
+            output["pos_adj"] = pos_adj
+            output["neg_adj"] = neg_adj
             return output
 
         elif decoder_type == "graph":
@@ -270,6 +286,7 @@ class GNNModelVAE(GAE):
              node_model_output: dict,
              lambda_edge_recon,
              lambda_gene_expr_recon,
+             lambda_latent_adj_recon_loss,
              lambda_latent_contrastive_instanceloss,
              lambda_latent_contrastive_clusterloss,
              lambda_omics_recon_mmd_loss) -> dict:
@@ -286,6 +303,8 @@ class GNNModelVAE(GAE):
             A scaling factor to adjust the contribution of edge reconstruction loss.
         lambda_gene_expr_recon : float
             A scaling factor to adjust the contribution of gene expression reconstruction loss.
+        lambda_latent_adj_recon_loss : float
+            A scaling factor to adjust the contribution of adjacency reconstruction loss in the latent space.
         lambda_latent_contrastive_instanceloss : float
             A scaling factor to adjust the contribution of instance-level contrastive loss between different latent representations.
         lambda_latent_contrastive_clusterloss : float
@@ -311,35 +330,40 @@ class GNNModelVAE(GAE):
         # 1. Compute Kullback-Leibler divergence loss for edge and node batch
         loss_dict["kl_reg_loss"] = compute_kl_reg_loss(
             mu=node_model_output["mu"],
-            logstd=node_model_output["logstd"])
+            logstd=node_model_output["logstd"]) # * 1 / node_model_output["mu"].size(0)
         loss_dict["kl_reg_loss"] += compute_kl_reg_loss(
             mu=edge_model_output["mu"],
-            logstd=edge_model_output["logstd"])
+            logstd=edge_model_output["logstd"]) # * 1 / edge_model_output["mu"].size(0)
 
         # 2. Compute edge reconstruction binary cross entropy loss for edge batch
         loss_dict["edge_recon_loss"] = (
                 lambda_edge_recon * compute_edge_recon_loss(
             edge_recon_logits=edge_model_output["edge_recon_logits"],
-            edge_recon_labels=edge_model_output["edge_recon_labels"]))
+            edge_recon_labels=edge_model_output["edge_recon_labels"])) * edge_model_output['mu'].size(0)/10
 
         # 3. Compute gene expression reconstruction with MSE loss for node batch
         loss_dict["gene_expr_recon_loss"] = (
                 lambda_gene_expr_recon *
                 compute_omics_recon_mse_loss(
                     recon_x=node_model_output["recon_features"],
-                    x=node_model_output["truth_x"])) # * node_model_output['truth_x'].size(0)
+                    x=node_model_output["truth_x"])) * 20000 # node_model_output['truth_x'].size(-1)
 
-        # 4. compute Contrastive instance losses
+        # 4. compute reconstructed adj loss through node feedforward
+        loss_dict["lambda_latent_adj_recon_loss"] = compute_adj_recon_loss(node_model_output['pos_adj'],
+                                                                           node_model_output['neg_adj'],
+                                                                           lambda_latent_adj_recon_loss) * 100 # * node_model_output['truth_x'].size(-1)
+
+        # 5. compute Contrastive instance losses
         loss_dict["lambda_latent_contrastive_instanceloss"] = compute_contrastive_instanceloss(node_model_output['z_1'],
                                                                                 node_model_output['z_2'],
                                                                                 lambda_latent_contrastive_instanceloss)
-        # 5. compute Contrastive cluster losses
+        # 6. compute Contrastive cluster losses
         loss_dict["lambda_latent_contrastive_clusterloss"] = compute_contrastive_clusterloss(node_model_output['c_1'],
                                                                                 node_model_output['c_2'],
                                                                                 self.cluster_num,
                                                                                 lambda_latent_contrastive_clusterloss)
 
-        # 6. compute MMD loss
+        # 7. compute MMD loss
         if self.used_mmd:
             cell_batch = node_model_output['truth_y']
             device = cell_batch.device
@@ -354,7 +378,7 @@ class GNNModelVAE(GAE):
                 for j in range(i + 1, num_groups):
                     z_i = grouped_z_cell[group_labels[i]]
                     z_j = grouped_z_cell[group_labels[j]]
-                    mmd_loss_tmp = compute_omics_recon_mmd_loss(z_i, z_j) * 600 # * node_model_output['z'].size(0)
+                    mmd_loss_tmp = compute_omics_recon_mmd_loss(z_i, z_j) * node_model_output['z'].size(0)
                     loss_dict["gene_expr_mmd_loss"] += mmd_loss_tmp * lambda_omics_recon_mmd_loss
 
         # Compute optimization loss used for backpropagation as well as global
@@ -369,6 +393,8 @@ class GNNModelVAE(GAE):
         if self.include_gene_expr_recon_loss:
             loss_dict["global_loss"] += loss_dict["gene_expr_recon_loss"]
             loss_dict["optim_loss"] += loss_dict["gene_expr_recon_loss"]
+            loss_dict["global_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
+            loss_dict["optim_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
             loss_dict["global_loss"] += loss_dict["lambda_latent_contrastive_instanceloss"]
             loss_dict["optim_loss"] += loss_dict["lambda_latent_contrastive_instanceloss"]
             loss_dict["global_loss"] += loss_dict["lambda_latent_contrastive_clusterloss"]

@@ -28,6 +28,18 @@ def compute_omics_recon_mse_loss(recon_x, x):
     mse_loss = F.mse_loss(recon_x, x) # , reduction='sum'
     return mse_loss
 
+def compute_adj_recon_loss(pos_adj, neg_adj, temperature, EPS = 1e-15):
+    """
+    Given latent variables :obj:`z`, computes the binary cross
+    entropy loss for positive edges :obj:`pos_edge_index` and negative
+    sampled edges.
+    """
+    pos_loss = -torch.log(pos_adj + EPS).mean()
+    neg_loss = -torch.log(1 - neg_adj + EPS).mean()
+    total_loss = (pos_loss + neg_loss) * temperature
+
+    return total_loss
+
 def compute_edge_recon_loss(
         edge_recon_logits: torch.Tensor,
         edge_recon_labels: torch.Tensor,

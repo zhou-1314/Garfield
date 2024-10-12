@@ -107,6 +107,7 @@ class GarfieldTrainer(BaseMixin):
                  early_stopping_kwargs,
                  monitor,
                  verbose,
+                 device_id,
                  seed,
                  **kwargs):
         self.adata = adata
@@ -127,7 +128,6 @@ class GarfieldTrainer(BaseMixin):
         self.augment_type_ = augment_type
 
         ## data loader
-        # self.loader_type_ = self.args.loader_type
         self.n_sampled_neighbors_ = num_neighbors
         self.loaders_n_hops_ = loaders_n_hops
         self.edge_batch_size_ = edge_batch_size # 512
@@ -158,7 +158,8 @@ class GarfieldTrainer(BaseMixin):
         self.early_stopping = EarlyStopping(**self.early_stopping_kwargs_)
 
         print("\n--- INITIALIZING TRAINER ---")
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(f"cuda:{device_id}" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # seed = 2024
         random.seed(seed)
         os.environ['PYTHONHASHSEED'] = str(seed)
@@ -224,6 +225,7 @@ class GarfieldTrainer(BaseMixin):
               gradient_clipping,
               lambda_edge_recon,
               lambda_gene_expr_recon,
+              lambda_latent_adj_recon_loss,
               lambda_latent_contrastive_instanceloss,
               lambda_latent_contrastive_clusterloss,
               lambda_omics_recon_mmd_loss
@@ -247,6 +249,8 @@ class GarfieldTrainer(BaseMixin):
             Weight for edge reconstruction loss.
         lambda_gene_expr_recon : float
             Weight for gene expression reconstruction loss.
+        lambda_latent_adj_recon_loss : float
+            Weight for latent adjacency reconstruction loss.
         lambda_latent_contrastive_instanceloss : float
             Weight for instance-level latent contrastive loss.
         lambda_latent_contrastive_clusterloss : float
@@ -314,6 +318,7 @@ class GarfieldTrainer(BaseMixin):
                     node_model_output=node_train_model_output,
                     lambda_edge_recon=lambda_edge_recon,
                     lambda_gene_expr_recon=lambda_gene_expr_recon,
+                    lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                     lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                     lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
                     lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss
@@ -346,6 +351,7 @@ class GarfieldTrainer(BaseMixin):
                 self.test_metrics_epoch(
                     lambda_edge_recon=lambda_edge_recon,
                     lambda_gene_expr_recon=lambda_gene_expr_recon,
+                    lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                     lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                     lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
                     lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss)
@@ -397,6 +403,7 @@ class GarfieldTrainer(BaseMixin):
     def test_metrics_epoch(self,
                            lambda_edge_recon,
                            lambda_gene_expr_recon,
+                           lambda_latent_adj_recon_loss,
                            lambda_latent_contrastive_instanceloss,
                            lambda_latent_contrastive_clusterloss,
                            lambda_omics_recon_mmd_loss
@@ -450,6 +457,7 @@ class GarfieldTrainer(BaseMixin):
                 node_model_output=node_val_model_output,
                 lambda_edge_recon=lambda_edge_recon,
                 lambda_gene_expr_recon=lambda_gene_expr_recon,
+                lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                 lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                 lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
                 lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss

@@ -1,4 +1,7 @@
 import os
+import io
+import pkgutil
+
 import scanpy as sc
 import anndata as ad
 
@@ -327,8 +330,32 @@ def preprocessing_adt(
         adata_use.obsm['feat'] = adata_use.obsm['X_pca'].copy()
     else:
         sc.pp.neighbors(adata_use, n_neighbors=n, metric=metric, use_rep='X')
+        adata_use.obsm['feat'] = adata_use.X.copy()
 
     return adata, adata_use
+
+def save_adata_atac(atac_adata, genome, use_gene_weight, use_top_pcs, user_cache_path=None):
+    # 使用os.path.join来构建路径，避免平台依赖性问题
+    cache_path = os.path.join(user_cache_path, "adata_ATAC_cache.h5ad") if user_cache_path else "adata_ATAC_cache.h5ad"
+    # 检查基因组参数是否有效
+    valid_genomes = {'hg19', 'hg38', 'mm9', 'mm10'}
+    if genome not in valid_genomes:
+        raise ValueError(f"Invalid genome '{genome}'. Choose from {valid_genomes}.")
+    # 检查是否已经存在缓存文件
+    if os.path.exists(cache_path):
+        print("Gene activity matrix has been calculated, loading cached adata_CG_atac object...")
+        adata_CG_atac = sc.read_h5ad(cache_path)
+    else:
+        # 如果缓存文件不存在，执行耗时计算生成新的adata对象
+        print('Converting peak to gene activity matrix, this might take a while...')
+        # 生成新的adata_CG_atac对象
+        adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weight=use_gene_weight, use_top_pcs=use_top_pcs)
+        # 保存adata对象到缓存文件
+        adata_CG_atac.write_h5ad(cache_path)
+        print(f"adata object cached at: {cache_path}")
+
+    return adata_CG_atac
+
 
 ### preprocessing main function
 def preprocessing(
@@ -341,8 +368,9 @@ def preprocessing(
         used_hvgs: bool = True,
         graph_const_method: str = None,
         genome: str = None,
-        use_gene_weigt: bool = True,
+        use_gene_weight: bool = True,
         use_top_pcs: bool = False,
+        user_cache_path: str = None,
         min_features: int = 600,
         min_cells: int = 3,
         target_sum: int = None,
@@ -389,10 +417,12 @@ def preprocessing(
         The method for graph construction of spatial data, by default None.
     genome : str, optional
         The genome reference, by default None.
-    use_gene_weigt : bool, optional
+    use_gene_weight : bool, optional
         Whether to use gene weight, by default True.
     use_top_pcs : bool, optional
         Whether to use top principal components, by default False.
+    user_cache_path: str, optional
+        The path to save the cache file, by default None.
     min_features : int, optional
         Minimum number of features, by default 600.
     min_cells : int, optional
@@ -523,29 +553,17 @@ def preprocessing(
                 adata_paired.obs = pd.merge(rnaobs, atacobs, left_index=True, right_index=True)
 
                 ## 先将 scATAC 转换为基因活性矩阵
-                # 定义保存文件的路径
-                cache_path = "adata_ATAC_cache.h5ad"
-                # 检查是否已经存在缓存文件
-                if os.path.exists(cache_path):
-                    # 如果缓存文件存在，直接加载
-                    print("Gene activity matrix has been calculated, and loading cached adata_CG_atac object...")
-                    adata_CG_atac = sc.read_h5ad(cache_path)
-                else:
-                    # 如果缓存文件不存在，执行耗时计算生成新的 adata
-                    print('Convert peak to gene activity matrix, this might take a while...', flush=True)
-                    print('`genome` parameter should be set correctly', flush=True)
-                    print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}", flush=True)
-                    # 生成新的 adata_CG_atac 对象
-                    adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weigt=use_gene_weigt, use_top_pcs=use_top_pcs)
-                    # 将 adata_new 保存到缓存文件中
-                    adata_CG_atac.write_h5ad(cache_path)
-                    print(f"adata object cached at: {cache_path}")
+                adata_CG_atac = save_adata_atac(atac_adata,
+                                genome=genome,
+                                use_gene_weight=use_gene_weight,
+                                use_top_pcs=use_top_pcs,
+                                user_cache_path=user_cache_path)
 
                 ## 交集
                 common_genes = set(rna_adata.var_names).intersection(set(adata_CG_atac.var_names))
                 print('There are {} common genes in RNA and ATAC datasets'.format(len(common_genes)))
-                rna_adata_shared = rna_adata[:, list(common_genes)]
-                atac_adata_shared = adata_CG_atac[:, list(common_genes)]
+                rna_adata_shared = rna_adata[:, list(common_genes)].copy()
+                atac_adata_shared = adata_CG_atac[:, list(common_genes)].copy()
 
                 # 通过cell matching 构建组学间的图结构
                 print('To start performing cell matching for adjacency matrix of the graph, please wait...', flush=True)
@@ -587,8 +605,39 @@ def preprocessing(
                     svd_solver=svd_solver,
                     backed=backed
                 )
+                # Here we are integrating protein and RNA data,
+                # and most of the time there are name differences between protein (antibody)
+                # and their corresponding gene names.
+                correspondence = pkgutil.get_data('Garfield', 'data/gene_anno/protein_gene_conversion.csv')
+                correspondence = pd.read_csv(io.BytesIO(correspondence), encoding='utf8')
+
+                rna_protein_correspondence = []
+                for i in range(correspondence.shape[0]):
+                    curr_protein_name, curr_rna_names = correspondence.iloc[i]
+                    if curr_protein_name not in adt_adata_hvg.var_names:
+                        continue
+                    if curr_rna_names.find(
+                            'Ignore') != -1:  # some correspondence ignored eg. protein isoform to one gene
+                        continue
+                    curr_rna_names = curr_rna_names.split('/')  # eg. one protein to multiple genes
+                    for r in curr_rna_names:
+                        if r in rna_adata_hvg.var_names:
+                            rna_protein_correspondence.append([r, curr_protein_name])
+                rna_protein_correspondence = np.array(rna_protein_correspondence)
+
                 ## Concatenating different modalities
                 adata_paired = ad.concat([rna_adata_hvg, adt_adata_hvg], axis=1)
+                # 假设 obsm 的每个值都是形状相同的矩阵，可以通过 np.hstack 或其他方法进行合并
+                rna_obsm = rna_adata_hvg.obsm
+                adt_obsm = adt_adata_hvg.obsm
+                # 只需要 feat key
+                # combined_obsm = {key: np.hstack((rna_obsm[key], atac_obsm[key])) for key in rna_obsm.keys()}
+                combined_obsm = np.hstack((rna_obsm['feat'], adt_obsm['feat']))
+                # 将合并后的 obsm 信息添加到 adata_paired，但先确保索引匹配
+                adata_paired.obsm['feat'] = pd.DataFrame(
+                    combined_obsm,
+                    index=adata_paired.obs.index  # 确保索引一致
+                )
 
                 ## the .obs layer is empty now, and we need to repopulate it
                 rna_cols = rna_adata.obs.columns
@@ -601,10 +650,10 @@ def preprocessing(
                 adata_paired.obs = pd.merge(rnaobs, adtobs, left_index=True, right_index=True)
 
                 ## 交集
-                common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
-                print('There are {} common genes in RNA and ADT datasets'.format(len(common_genes)))
-                rna_adata_shared = rna_adata[:, list(common_genes)]
-                adt_adata_shared = adt_adata[:, list(common_genes)]
+                # common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
+                print('There are {} common genes in RNA and ADT datasets'.format(rna_protein_correspondence.shape[0]))
+                rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
+                adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
 
                 ## 通过cell matching 构建组学间的图结构
                 print('To start performing cell matching for adjacency matrix of the graph, please wait...', flush=True)
@@ -763,36 +812,23 @@ def preprocessing(
 
                 ## 先将 scATAC 转换为基因活性矩阵
                 if len(atac_adata.var_names) > 50000:
-                    # 定义保存文件的路径
-                    cache_path = "adata_ATAC_cache.h5ad"
-                    # 检查是否已经存在缓存文件
-                    if os.path.exists(cache_path):
-                        # 如果缓存文件存在，直接加载
-                        print("Gene activity matrix has been calculated, and loading cached adata_CG_atac object...")
-                        adata_CG_atac = sc.read_h5ad(cache_path)
-                    else:
-                        # 如果缓存文件不存在，执行耗时计算生成新的 adata
-                        print('Convert peak to gene activity matrix, this might take a while...', flush=True)
-                        print('`genome` parameter should be set correctly', flush=True)
-                        print("Choose from {‘hg19’, ‘hg38’, ‘mm9’, ‘mm10’}", flush=True)
-                        # 生成新的 adata_CG_atac 对象
-                        adata_CG_atac = gene_scores(atac_adata, genome=genome, use_gene_weigt=use_gene_weigt,
-                                                    use_top_pcs=use_top_pcs)
-                        # 将 adata_new 保存到缓存文件中
-                        adata_CG_atac.write_h5ad(cache_path)
-                        print(f"adata object cached at: {cache_path}")
+                    adata_CG_atac = save_adata_atac(atac_adata,
+                                                    genome=genome,
+                                                    use_gene_weight=use_gene_weight,
+                                                    use_top_pcs=use_top_pcs,
+                                                    user_cache_path=user_cache_path)
 
                     ## 交集
                     common_genes = set(rna_adata.var_names).intersection(set(adata_CG_atac.var_names))
                     print('There are {} common genes in RNA and ATAC datasets'.format(len(common_genes)))
-                    rna_adata_shared = rna_adata[:, list(common_genes)]
-                    atac_adata_shared = adata_CG_atac[:, list(common_genes)]
+                    rna_adata_shared = rna_adata[:, list(common_genes)].copy()
+                    atac_adata_shared = adata_CG_atac[:, list(common_genes)].copy()
                 else:
                     ## 交集
                     common_genes = set(rna_adata.var_names).intersection(set(atac_adata.var_names))
                     print('There are {} common genes in RNA and ATAC datasets'.format(len(common_genes)))
-                    rna_adata_shared = rna_adata[:, list(common_genes)]
-                    atac_adata_shared = atac_adata[:, list(common_genes)]
+                    rna_adata_shared = rna_adata[:, list(common_genes)].copy()
+                    atac_adata_shared = atac_adata[:, list(common_genes)].copy()
 
                 # 通过cell matching 构建组学间的图结构
                 print('To start performing cell matching for adjacency matrix of the graph, please wait...', flush=True)
@@ -853,6 +889,23 @@ def preprocessing(
                     svd_solver=svd_solver,
                     backed=backed
                 )
+                correspondence = pkgutil.get_data('Garfield', 'data/gene_anno/protein_gene_conversion.csv')
+                correspondence = pd.read_csv(io.BytesIO(correspondence), encoding='utf8')
+
+                rna_protein_correspondence = []
+                for i in range(correspondence.shape[0]):
+                    curr_protein_name, curr_rna_names = correspondence.iloc[i]
+                    if curr_protein_name not in adt_adata_hvg.var_names:
+                        continue
+                    if curr_rna_names.find(
+                            'Ignore') != -1:  # some correspondence ignored eg. protein isoform to one gene
+                        continue
+                    curr_rna_names = curr_rna_names.split('/')  # eg. one protein to multiple genes
+                    for r in curr_rna_names:
+                        if r in rna_adata_hvg.var_names:
+                            rna_protein_correspondence.append([r, curr_protein_name])
+                rna_protein_correspondence = np.array(rna_protein_correspondence)
+
                 ## Concatenating different modalities
                 adata_paired = ad.concat([rna_adata_hvg, adt_adata_hvg], axis=1)
                 # 假设 obsm 的每个值都是形状相同的矩阵，可以通过 np.hstack 或其他方法进行合并
@@ -879,10 +932,10 @@ def preprocessing(
                 adata_paired.obs = pd.merge(rnaobs, adtobs, left_index=True, right_index=True)
 
                 ## 交集
-                common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
-                print('There are {} common genes in RNA and ADT datasets'.format(len(common_genes)))
-                rna_adata_shared = rna_adata[:, list(common_genes)]
-                adt_adata_shared = adt_adata[:, list(common_genes)]
+                # common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
+                print('There are {} common genes in RNA and ADT datasets'.format(rna_protein_correspondence.shape[0]))
+                rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
+                adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
 
                 ## 通过cell matching 构建组学间的图结构
                 print('To start performing cell matching for adjacency matrix of the graph, please wait...', flush=True)

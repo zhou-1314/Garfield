@@ -59,7 +59,10 @@ class GraphAnnTorchDataset():
         ## celltype label_encoder Todo 如果标签信息本身就是数值则不需要转换
         if label_name is not None:
             label_encoder = LabelEncoder()
-            meta = np.array(adata.obs[label_name].astype('str'))
+            try:
+                meta = np.array(adata.obs[label_name].astype('str'))
+            except KeyError:
+                meta = np.array(adata.obs['rna:' + label_name].astype('str'))
             meta = label_encoder.fit_transform(meta)
             # meta = meta.astype(np.float32)
             inverse = label_encoder.inverse_transform(range(0, np.max(meta) + 1))
