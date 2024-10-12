@@ -1,6 +1,10 @@
 # Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
 
-[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/zhou-1314/Garfield/blob/main/LICENSE)![GitHub Repo stars](https://img.shields.io/github/stars/zhou-1314/Garfield)![PyPI - Version](https://img.shields.io/pypi/v/garfield)[![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)[![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/zhou-1314/Garfield/blob/main/LICENSE)
+![GitHub Repo stars](https://img.shields.io/github/stars/zhou-1314/Garfield)
+![PyPI - Version](https://img.shields.io/pypi/v/garfield)
+[![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)
+[![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)
 
 <img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
 
