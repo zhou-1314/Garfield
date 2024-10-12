@@ -44,6 +44,9 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "sphinx_design",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "sphinxext.opengraph",
     "nbsphinx",
     'sphinx_copybutton',
     "edit_on_github",
@@ -56,6 +59,9 @@ autosummary_generate = True
 
 # Napoleon settings
 napoleon_google_docstring = False
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True  # having a separate entry generally helps readability
+napoleon_use_param = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
