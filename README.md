@@ -1,10 +1,12 @@
 # Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/zhou-1314/Garfield/blob/main/LICENSE)
-![GitHub Repo stars](https://img.shields.io/github/stars/zhou-1314/Garfield)
-![PyPI - Version](https://img.shields.io/pypi/v/garfield)
+![GitHub Repo stars](https://img.shields.io/github/stars/zhou-1314/Garfield)(https://github.com/zhou-1314/Garfield/stargazers)
+![PyPI - Version](https://img.shields.io/pypi/v/garfield)(https://pypi.org/project/garfield)
 [![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)
-[![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)
+[![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)](https://pepy.tech/project/Garfield)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PyPI](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
 <img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
 
@@ -161,4 +163,3 @@ If you have used Garfiled for your work, please consider citing:
     year={2024}
 }
 ```
-

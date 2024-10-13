@@ -20,7 +20,12 @@ import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.sampler import NeighborSampler
-from torch_geometric.loader import NeighborLoader, GraphSAINTEdgeSampler, NodeLoader, DataLoader
+from torch_geometric.loader import (
+    NeighborLoader,
+    GraphSAINTEdgeSampler,
+    NodeLoader,
+    DataLoader,
+)
 import torch_geometric.transforms as T
 
 import matplotlib
@@ -30,12 +35,14 @@ from ..data.dataloaders import initialize_dataloaders
 from .utils import _cycle_iterable, print_progress, EarlyStopping
 from .metrics import eval_metrics
 from .basetrainermixin import BaseMixin
+
 # from .transfer_anno import weighted_knn_trainer, weighted_knn_transfer
 
 # from torch.optim.lr_scheduler import StepLR
 # from scheduler import CosineAnnealingWarmRestarts
 # GAMMA=0.9
 warnings.filterwarnings("ignore", category=UserWarning, module="torch_geometric")
+
 
 class GarfieldTrainer(BaseMixin):
     """
@@ -87,39 +94,42 @@ class GarfieldTrainer(BaseMixin):
     kwargs : dict
         Additional arguments for training configuration.
     """
-    def __init__(self,
-                 adata,
-                 model: nn.Module,
-                 label_name,
-                 used_pca_feat,
-                 adj_key,
-                 edge_val_ratio,
-                 edge_test_ratio,
-                 node_val_ratio,
-                 node_test_ratio,
-                 augment_type,
-                 num_neighbors,
-                 loaders_n_hops,
-                 edge_batch_size,
-                 node_batch_size,
-                 reload_best_model,
-                 use_early_stopping,
-                 early_stopping_kwargs,
-                 monitor,
-                 verbose,
-                 device_id,
-                 seed,
-                 **kwargs):
+
+    def __init__(
+        self,
+        adata,
+        model: nn.Module,
+        label_name,
+        used_pca_feat,
+        adj_key,
+        edge_val_ratio,
+        edge_test_ratio,
+        node_val_ratio,
+        node_test_ratio,
+        augment_type,
+        num_neighbors,
+        loaders_n_hops,
+        edge_batch_size,
+        node_batch_size,
+        reload_best_model,
+        use_early_stopping,
+        early_stopping_kwargs,
+        monitor,
+        verbose,
+        device_id,
+        seed,
+        **kwargs,
+    ):
         self.adata = adata
         self.model = model
         self.label_name_ = label_name
         self.used_pca_feat_ = used_pca_feat
-        self.adj_key_ = adj_key # spatial_connectivities
+        self.adj_key_ = adj_key  # spatial_connectivities
 
         ## data split
-        self.edge_val_ratio_ = edge_val_ratio # 0.1
+        self.edge_val_ratio_ = edge_val_ratio  # 0.1
         self.edge_train_ratio_ = 1 - edge_val_ratio
-        self.edge_test_ratio_ = edge_test_ratio # 0.
+        self.edge_test_ratio_ = edge_test_ratio  # 0.
         self.node_val_ratio_ = node_val_ratio
         self.node_train_ratio_ = 1 - node_val_ratio
         self.node_test_ratio_ = node_test_ratio
@@ -130,8 +140,8 @@ class GarfieldTrainer(BaseMixin):
         ## data loader
         self.n_sampled_neighbors_ = num_neighbors
         self.loaders_n_hops_ = loaders_n_hops
-        self.edge_batch_size_ = edge_batch_size # 512
-        self.node_batch_size_ = node_batch_size # None,
+        self.edge_batch_size_ = edge_batch_size  # 512
+        self.node_batch_size_ = node_batch_size  # None,
 
         ## other parameters
         self.reload_best_model_ = reload_best_model
@@ -140,29 +150,32 @@ class GarfieldTrainer(BaseMixin):
         self.monitor_ = monitor
         self.verbose_ = verbose
         self.loaders_n_hops_ = kwargs.pop("loaders_n_hops", 1)
-        self.gradient_clipping_ = kwargs.pop("gradient_clipping", 0.)
+        self.gradient_clipping_ = kwargs.pop("gradient_clipping", 0.0)
         self.epoch = -1
         self.training_time = 0
         self.optimizer = None
         self.best_epoch = None
         self.best_model_state_dict = None
-        self.early_stopping_kwargs_ = (self.early_stopping_kwargs_ if
-                                       self.early_stopping_kwargs_ else {})
+        self.early_stopping_kwargs_ = (
+            self.early_stopping_kwargs_ if self.early_stopping_kwargs_ else {}
+        )
         if not "early_stopping_metric" in self.early_stopping_kwargs_:
             if self.edge_val_ratio_ > 0 and self.node_val_ratio_ > 0:
-                self.early_stopping_kwargs_["early_stopping_metric"] = (
-                    "val_global_loss")
+                self.early_stopping_kwargs_["early_stopping_metric"] = "val_global_loss"
             else:
-                self.early_stopping_kwargs_["early_stopping_metric"] = (
-                    "train_global_loss")
+                self.early_stopping_kwargs_[
+                    "early_stopping_metric"
+                ] = "train_global_loss"
         self.early_stopping = EarlyStopping(**self.early_stopping_kwargs_)
 
         print("\n--- INITIALIZING TRAINER ---")
-        self.device = torch.device(f"cuda:{device_id}" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            f"cuda:{device_id}" if torch.cuda.is_available() else "cpu"
+        )
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # seed = 2024
         random.seed(seed)
-        os.environ['PYTHONHASHSEED'] = str(seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -181,7 +194,8 @@ class GarfieldTrainer(BaseMixin):
             edge_val_ratio=self.edge_val_ratio_,
             edge_test_ratio=self.edge_test_ratio_,
             node_val_ratio=self.node_val_ratio_,
-            node_test_ratio=self.node_test_ratio_,)
+            node_test_ratio=self.node_test_ratio_,
+        )
         self.node_masked_data = data_dict["node_masked_data"]
         self.edge_train_data = data_dict["edge_train_data"]
         self.edge_val_data = data_dict["edge_val_data"]
@@ -196,8 +210,10 @@ class GarfieldTrainer(BaseMixin):
 
         # Determine node batch size automatically if not specified
         if self.node_batch_size_ is None:
-            self.node_batch_size_ = int(self.edge_batch_size_ / math.floor(
-                self.n_edges_train / self.n_nodes_train))
+            self.node_batch_size_ = int(
+                self.edge_batch_size_
+                / math.floor(self.n_edges_train / self.n_nodes_train)
+            )
         print(f"Edge batch size: {self.edge_batch_size_}")
         print(f"Node batch size: {self.node_batch_size_}")
 
@@ -211,25 +227,27 @@ class GarfieldTrainer(BaseMixin):
             n_direct_neighbors=self.n_sampled_neighbors_,
             n_hops=self.loaders_n_hops_,
             edges_directed=False,
-            neg_edge_sampling_ratio=1.)
+            neg_edge_sampling_ratio=1.0,
+        )
         self.edge_train_loader = loader_dict["edge_train_loader"]
         self.edge_val_loader = loader_dict.pop("edge_val_loader", None)
         self.node_train_loader = loader_dict["node_train_loader"]
         self.node_val_loader = loader_dict.pop("node_val_loader", None)
 
-    def train(self,
-              n_epochs,
-              n_epochs_no_edge_recon, # : int=0
-              learning_rate,
-              weight_decay,
-              gradient_clipping,
-              lambda_edge_recon,
-              lambda_gene_expr_recon,
-              lambda_latent_adj_recon_loss,
-              lambda_latent_contrastive_instanceloss,
-              lambda_latent_contrastive_clusterloss,
-              lambda_omics_recon_mmd_loss
-              ):
+    def train(
+        self,
+        n_epochs,
+        n_epochs_no_edge_recon,  # : int=0
+        learning_rate,
+        weight_decay,
+        gradient_clipping,
+        lambda_edge_recon,
+        lambda_gene_expr_recon,
+        lambda_latent_adj_recon_loss,
+        lambda_latent_contrastive_instanceloss,
+        lambda_latent_contrastive_clusterloss,
+        lambda_omics_recon_mmd_loss,
+    ):
         """
         Trains the Garfield model for a specified number of epochs with joint edge-level and node-level tasks.
 
@@ -269,8 +287,12 @@ class GarfieldTrainer(BaseMixin):
         self.gradient_clipping_ = gradient_clipping
         self.lambda_edge_recon_ = lambda_edge_recon
         self.lambda_gene_expr_recon_ = lambda_gene_expr_recon
-        self.lambda_latent_contrastive_instanceloss = lambda_latent_contrastive_instanceloss
-        self.lambda_latent_contrastive_clusterloss = lambda_latent_contrastive_clusterloss
+        self.lambda_latent_contrastive_instanceloss = (
+            lambda_latent_contrastive_instanceloss
+        )
+        self.lambda_latent_contrastive_clusterloss = (
+            lambda_latent_contrastive_clusterloss
+        )
         self.lambda_omics_recon_mmd_loss_ = lambda_omics_recon_mmd_loss
 
         print("\n--- MODEL TRAINING ---")
@@ -278,9 +300,9 @@ class GarfieldTrainer(BaseMixin):
         self.epoch_logs = defaultdict(list)
         self.model.train()
         params = filter(lambda p: p.requires_grad, self.model.parameters())
-        self.optimizer = torch.optim.Adam(params,
-                                          lr=learning_rate,
-                                          weight_decay=weight_decay)
+        self.optimizer = torch.optim.Adam(
+            params, lr=learning_rate, weight_decay=weight_decay
+        )
 
         for self.epoch in range(n_epochs):
             if self.epoch < self.n_epochs_no_edge_recon_:
@@ -295,22 +317,24 @@ class GarfieldTrainer(BaseMixin):
             # Jointly loop through edge- and node-level batches, repeating node-
             # level batches until edge-level batches are complete
             for edge_train_data_batch, node_train_data_batch in zip(
-                    self.edge_train_loader,
-                    _cycle_iterable(self.node_train_loader)):  # itertools.cycle
+                self.edge_train_loader, _cycle_iterable(self.node_train_loader)
+            ):  # itertools.cycle
                 # resulted in memory leak
                 # Forward pass node-level batch
                 node_train_data_batch = node_train_data_batch.to(self.device)
                 node_train_model_output = self.model(
                     data_batch=node_train_data_batch,
                     decoder_type="omics",
-                    augment_type=self.augment_type_)
+                    augment_type=self.augment_type_,
+                )
 
                 # Forward pass edge-level batch
                 edge_train_data_batch = edge_train_data_batch.to(self.device)
                 edge_train_model_output = self.model(
                     data_batch=edge_train_data_batch,
                     decoder_type="graph",
-                    augment_type=None)
+                    augment_type=None,
+                )
 
                 # Calculate training loss
                 train_loss_dict = self.model.loss(
@@ -321,7 +345,7 @@ class GarfieldTrainer(BaseMixin):
                     lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                     lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                     lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
-                    lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss
+                    lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss,
                 )
 
                 train_global_loss = train_loss_dict["global_loss"]
@@ -331,10 +355,8 @@ class GarfieldTrainer(BaseMixin):
                     for key, value in train_loss_dict.items():
                         self.iter_logs[f"train_{key}"].append(value.item())
                 else:
-                    self.iter_logs["train_global_loss"].append(
-                        train_global_loss.item())
-                    self.iter_logs["train_optim_loss"].append(
-                        train_optim_loss.item())
+                    self.iter_logs["train_global_loss"].append(train_global_loss.item())
+                    self.iter_logs["train_optim_loss"].append(train_optim_loss.item())
                 self.iter_logs["n_train_iter"] += 1
                 # Optimize for training loss
                 self.optimizer.zero_grad()
@@ -342,38 +364,44 @@ class GarfieldTrainer(BaseMixin):
                 train_optim_loss.backward()
                 # Clip gradients
                 if self.gradient_clipping_ > 0:
-                    torch.nn.utils.clip_grad_value_(self.model.parameters(), self.gradient_clipping_)
+                    torch.nn.utils.clip_grad_value_(
+                        self.model.parameters(), self.gradient_clipping_
+                    )
                 self.optimizer.step()
 
             # Validate model
-            if (self.edge_val_loader is not None and
-                    self.node_val_loader is not None):
+            if self.edge_val_loader is not None and self.node_val_loader is not None:
                 self.test_metrics_epoch(
                     lambda_edge_recon=lambda_edge_recon,
                     lambda_gene_expr_recon=lambda_gene_expr_recon,
                     lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                     lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                     lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
-                    lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss)
-            elif (self.edge_val_loader is None and
-                  self.node_val_loader is not None):
-                warnings.warn("You have specified a node validation set but no "
-                              "edge validation set. Skipping validation...")
-            elif (self.edge_val_loader is not None and
-                  self.node_val_loader is None):
-                warnings.warn("You have specified an edge validation set but no"
-                              " node validation set. Skipping validation...")
+                    lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss,
+                )
+            elif self.edge_val_loader is None and self.node_val_loader is not None:
+                warnings.warn(
+                    "You have specified a node validation set but no "
+                    "edge validation set. Skipping validation..."
+                )
+            elif self.edge_val_loader is not None and self.node_val_loader is None:
+                warnings.warn(
+                    "You have specified an edge validation set but no"
+                    " node validation set. Skipping validation..."
+                )
 
             # Convert iteration level logs into epoch level logs
             for key in self.iter_logs:
                 if key.startswith("train"):
                     self.epoch_logs[key].append(
-                        np.array(self.iter_logs[key]).sum() /
-                        self.iter_logs["n_train_iter"])
+                        np.array(self.iter_logs[key]).sum()
+                        / self.iter_logs["n_train_iter"]
+                    )
                 if key.startswith("val"):
                     self.epoch_logs[key].append(
-                        np.array(self.iter_logs[key]).sum() /
-                        self.iter_logs["n_val_iter"])
+                        np.array(self.iter_logs[key]).sum()
+                        / self.iter_logs["n_val_iter"]
+                    )
 
             # Monitor epoch level logs
             if self.monitor_:
@@ -385,13 +413,15 @@ class GarfieldTrainer(BaseMixin):
                     break
 
         # Track training time and load best model
-        self.training_time += (time.time() - start_time)
+        self.training_time += time.time() - start_time
         minutes, seconds = divmod(self.training_time, 60)
-        print(f"Model training finished after {int(minutes)} min {int(seconds)}"
-              " sec.")
+        print(
+            f"Model training finished after {int(minutes)} min {int(seconds)}" " sec."
+        )
         if self.best_model_state_dict is not None and self.reload_best_model_:
-            print("Using best model state, which was in epoch "
-                  f"{self.best_epoch + 1}.")
+            print(
+                "Using best model state, which was in epoch " f"{self.best_epoch + 1}."
+            )
             self.model.load_state_dict(self.best_model_state_dict)
 
         self.model.eval()
@@ -400,14 +430,15 @@ class GarfieldTrainer(BaseMixin):
             self.validate_end()
 
     @torch.no_grad()
-    def test_metrics_epoch(self,
-                           lambda_edge_recon,
-                           lambda_gene_expr_recon,
-                           lambda_latent_adj_recon_loss,
-                           lambda_latent_contrastive_instanceloss,
-                           lambda_latent_contrastive_clusterloss,
-                           lambda_omics_recon_mmd_loss
-                           ):
+    def test_metrics_epoch(
+        self,
+        lambda_edge_recon,
+        lambda_gene_expr_recon,
+        lambda_latent_adj_recon_loss,
+        lambda_latent_contrastive_instanceloss,
+        lambda_latent_contrastive_clusterloss,
+        lambda_omics_recon_mmd_loss,
+    ):
         """
         Evaluates the Garfield model at the end of each epoch on validation data.
 
@@ -436,20 +467,21 @@ class GarfieldTrainer(BaseMixin):
         # Jointly loop through edge- and node-level batches, repeating node-
         # level batches until edge-level batches are complete
         for edge_val_data_batch, node_val_data_batch in zip(
-                self.edge_val_loader, _cycle_iterable(self.node_val_loader)):
+            self.edge_val_loader, _cycle_iterable(self.node_val_loader)
+        ):
             # Forward pass node level batch
             node_val_data_batch = node_val_data_batch.to(self.device)
             node_val_model_output = self.model(
                 data_batch=node_val_data_batch,
                 decoder_type="omics",
-                augment_type=self.augment_type_)
+                augment_type=self.augment_type_,
+            )
 
             # Forward pass edge level batch
             edge_val_data_batch = edge_val_data_batch.to(self.device)
             edge_val_model_output = self.model(
-                data_batch=edge_val_data_batch,
-                decoder_type="graph",
-                augment_type=None)
+                data_batch=edge_val_data_batch, decoder_type="graph", augment_type=None
+            )
 
             # Calculate validation loss
             val_loss_dict = self.model.loss(
@@ -460,7 +492,7 @@ class GarfieldTrainer(BaseMixin):
                 lambda_latent_adj_recon_loss=lambda_latent_adj_recon_loss,
                 lambda_latent_contrastive_instanceloss=lambda_latent_contrastive_instanceloss,
                 lambda_latent_contrastive_clusterloss=lambda_latent_contrastive_clusterloss,
-                lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss
+                lambda_omics_recon_mmd_loss=lambda_omics_recon_mmd_loss,
             )
 
             val_global_loss = val_loss_dict["global_loss"]
@@ -475,26 +507,28 @@ class GarfieldTrainer(BaseMixin):
 
             # Calculate evaluation metrics
             edge_recon_probs_val = torch.sigmoid(
-                edge_val_model_output["edge_recon_logits"])
+                edge_val_model_output["edge_recon_logits"]
+            )
             edge_recon_labels_val = edge_val_model_output["edge_recon_labels"]
             edge_recon_probs_val_accumulated = np.append(
                 edge_recon_probs_val_accumulated,
-                edge_recon_probs_val.detach().cpu().numpy())
+                edge_recon_probs_val.detach().cpu().numpy(),
+            )
             edge_recon_labels_val_accumulated = np.append(
                 edge_recon_labels_val_accumulated,
-                edge_recon_labels_val.detach().cpu().numpy())
+                edge_recon_labels_val.detach().cpu().numpy(),
+            )
         val_eval_dict = eval_metrics(
             edge_recon_probs=edge_recon_probs_val_accumulated,
-            edge_labels=edge_recon_labels_val_accumulated)
+            edge_labels=edge_recon_labels_val_accumulated,
+        )
         if self.verbose_:
-            self.epoch_logs["val_auroc_score"].append(
-                val_eval_dict["auroc_score"])
-            self.epoch_logs["val_auprc_score"].append(
-                val_eval_dict["auprc_score"])
+            self.epoch_logs["val_auroc_score"].append(val_eval_dict["auroc_score"])
+            self.epoch_logs["val_auprc_score"].append(val_eval_dict["auprc_score"])
             self.epoch_logs["val_best_acc_score"].append(
-                val_eval_dict["best_acc_score"])
-            self.epoch_logs["val_best_f1_score"].append(
-                val_eval_dict["best_f1_score"])
+                val_eval_dict["best_acc_score"]
+            )
+            self.epoch_logs["val_best_f1_score"].append(val_eval_dict["best_f1_score"])
 
         self.model.train()
 
@@ -516,20 +550,22 @@ class GarfieldTrainer(BaseMixin):
             edge_val_data_batch = edge_val_data_batch.to(self.device)
 
             edge_val_model_output = self.model(
-                data_batch=edge_val_data_batch,
-                decoder_type="graph",
-                augment_type=None)
+                data_batch=edge_val_data_batch, decoder_type="graph", augment_type=None
+            )
 
             # Calculate evaluation metrics
             edge_recon_probs_val = torch.sigmoid(
-                edge_val_model_output["edge_recon_logits"])
+                edge_val_model_output["edge_recon_logits"]
+            )
             edge_recon_labels_val = edge_val_model_output["edge_recon_labels"]
             edge_recon_probs_val_accumulated = np.append(
                 edge_recon_probs_val_accumulated,
-                edge_recon_probs_val.detach().cpu().numpy())
+                edge_recon_probs_val.detach().cpu().numpy(),
+            )
             edge_recon_labels_val_accumulated = np.append(
                 edge_recon_labels_val_accumulated,
-                edge_recon_labels_val.detach().cpu().numpy())
+                edge_recon_labels_val.detach().cpu().numpy(),
+            )
 
         # Get node-level ground truth and predictions
         omics_pred_dict_val_accumulated = np.array([])
@@ -540,22 +576,26 @@ class GarfieldTrainer(BaseMixin):
             node_val_model_output = self.model(
                 data_batch=node_val_data_batch,
                 decoder_type="omics",
-                augment_type=self.augment_type_)
+                augment_type=self.augment_type_,
+            )
 
             omics_truth_dict_val = node_val_model_output["truth_x"]
             omics_pred_dict_val = node_val_model_output["recon_features"]
             omics_pred_dict_val_accumulated = np.append(
                 omics_pred_dict_val_accumulated,
-                omics_pred_dict_val.detach().cpu().numpy())
+                omics_pred_dict_val.detach().cpu().numpy(),
+            )
             omics_truth_dict_val_accumulated = np.append(
                 omics_truth_dict_val_accumulated,
-                omics_truth_dict_val.detach().cpu().numpy())
+                omics_truth_dict_val.detach().cpu().numpy(),
+            )
 
         val_eval_dict = eval_metrics(
             edge_recon_probs=edge_recon_probs_val_accumulated,
             edge_labels=edge_recon_labels_val_accumulated,
             omics_recon_pred=omics_pred_dict_val_accumulated,
-            omics_recon_truth=omics_truth_dict_val_accumulated)
+            omics_recon_truth=omics_truth_dict_val_accumulated,
+        )
         print("\n--- MODEL EVALUATION ---")
         print(f"val AUROC score: {val_eval_dict['auroc_score']:.4f}")
         print(f"val AUPRC score: {val_eval_dict['auprc_score']:.4f}")
@@ -591,89 +631,83 @@ class GarfieldTrainer(BaseMixin):
     def _get_init_params_from_dict(cls, dct):
         init_params = {
             # Input options
-            'data_dir': dct['data_dir_'],
-            'project_name': dct['project_name_'],
-            'adata_list': dct['adata_list_'],
-            'profile': dct['profile_'],
-            'data_type': dct['data_type_'],
-            'sub_data_type': dct['sub_data_type_'],
-            'weight': dct['weight_'],
-            'graph_const_method': dct['graph_const_method_'],
-            'genome': dct['genome_'],
-            'sample_col': dct['sample_col_'],
-
+            "data_dir": dct["data_dir_"],
+            "project_name": dct["project_name_"],
+            "adata_list": dct["adata_list_"],
+            "profile": dct["profile_"],
+            "data_type": dct["data_type_"],
+            "sub_data_type": dct["sub_data_type_"],
+            "weight": dct["weight_"],
+            "graph_const_method": dct["graph_const_method_"],
+            "genome": dct["genome_"],
+            "sample_col": dct["sample_col_"],
             ## whether to use metacell mode
-            'metacell': dct['metacell_'],
-            'metacell_size': dct['metacell_size_'],
-            'single_n_top_genes': dct['single_n_top_genes_'],
-            'n_pcs': dct['n_pcs_'],
-
+            "metacell": dct["metacell_"],
+            "metacell_size": dct["metacell_size_"],
+            "single_n_top_genes": dct["single_n_top_genes_"],
+            "n_pcs": dct["n_pcs_"],
             # Preprocessing options
-            'filter_cells_rna': dct['filter_cells_rna_'],
-            'min_features': dct['min_features_'],
-            'min_cells': dct['min_cells_'],
-            'keep_mt': dct['keep_mt_'],
-            'normalize': dct['normalize_'],
-            'target_sum': dct['target_sum_'],
-            'used_hvg': dct['used_hvg_'],
-            'used_scale': dct['used_scale_'],
-            'used_feat': dct['used_feat_'],
-            'rna_n_top_features': dct['rna_n_top_features_'],
-            'atac_n_top_features': dct['atac_n_top_features_'],
-            'n_components': dct['n_components_'],
-            'n_neighbors': dct['n_neighbors_'],
-            'svd_solver': dct['svd_solver_'],
-            'method': dct['method_'],
-            'metric': dct['metric_'],
-            'resolution_tol': dct['resolution_tol_'],
-            'leiden_runs': dct['leiden_runs_'],
-            'leiden_seed': dct['leiden_seed_'],
-            'verbose': dct['verbose_'],
-
+            "filter_cells_rna": dct["filter_cells_rna_"],
+            "min_features": dct["min_features_"],
+            "min_cells": dct["min_cells_"],
+            "keep_mt": dct["keep_mt_"],
+            "normalize": dct["normalize_"],
+            "target_sum": dct["target_sum_"],
+            "used_hvg": dct["used_hvg_"],
+            "used_scale": dct["used_scale_"],
+            "used_feat": dct["used_feat_"],
+            "rna_n_top_features": dct["rna_n_top_features_"],
+            "atac_n_top_features": dct["atac_n_top_features_"],
+            "n_components": dct["n_components_"],
+            "n_neighbors": dct["n_neighbors_"],
+            "svd_solver": dct["svd_solver_"],
+            "method": dct["method_"],
+            "metric": dct["metric_"],
+            "resolution_tol": dct["resolution_tol_"],
+            "leiden_runs": dct["leiden_runs_"],
+            "leiden_seed": dct["leiden_seed_"],
+            "verbose": dct["verbose_"],
             # Model options
-            'augment_type': dct['augment_type_'],
-            'svd_q': dct['svd_q_'],
-            'gnn_layer': dct['gnn_layer_'],
-            'conv_type': dct['conv_type_'],
-            'hidden_dims': dct['hidden_dims_'],
-            'bottle_neck_neurons': dct['bottle_neck_neurons_'],
-            'cluster_num': dct['cluster_num_'],
-            'num_heads': dct['num_heads_'],
-            'concat': dct['concat_'],
-            'used_edge_weight': dct['used_edge_weight_'],
-            'used_recon_exp': dct['used_recon_exp_'],
-            'used_DSBN': dct['used_DSBN_'],
-            'used_mmd': dct['used_mmd_'],
-            'test_split': dct['test_split_'],
-            'val_split': dct['val_split_'],
-            'batch_size': dct['batch_size_'],
-            'loader_type': dct['loader_type_'],
-            'num_neighbors': dct['num_neighbors_'],
-            'epochs': dct['epochs_'],
-            'dropout': dct['dropout_'],
-            'mmd_temperature': dct['mmd_temperature_'],
-            'instance_temperature': dct['instance_temperature_'],
-            'cluster_temperature': dct['cluster_temperature_'],
-            'l2_reg': dct['l2_reg_'],
-            'patience': dct['patience_'],
-            'monitor_only_val_losses': dct['monitor_only_val_losses_'],
-            'gradient_clipping': dct['gradient_clipping_'],
-            'learning_rate': dct['learning_rate_'],
-            'weight_decay': dct['weight_decay_'],
-
+            "augment_type": dct["augment_type_"],
+            "svd_q": dct["svd_q_"],
+            "gnn_layer": dct["gnn_layer_"],
+            "conv_type": dct["conv_type_"],
+            "hidden_dims": dct["hidden_dims_"],
+            "bottle_neck_neurons": dct["bottle_neck_neurons_"],
+            "cluster_num": dct["cluster_num_"],
+            "num_heads": dct["num_heads_"],
+            "concat": dct["concat_"],
+            "used_edge_weight": dct["used_edge_weight_"],
+            "used_recon_exp": dct["used_recon_exp_"],
+            "used_DSBN": dct["used_DSBN_"],
+            "used_mmd": dct["used_mmd_"],
+            "test_split": dct["test_split_"],
+            "val_split": dct["val_split_"],
+            "batch_size": dct["batch_size_"],
+            "loader_type": dct["loader_type_"],
+            "num_neighbors": dct["num_neighbors_"],
+            "epochs": dct["epochs_"],
+            "dropout": dct["dropout_"],
+            "mmd_temperature": dct["mmd_temperature_"],
+            "instance_temperature": dct["instance_temperature_"],
+            "cluster_temperature": dct["cluster_temperature_"],
+            "l2_reg": dct["l2_reg_"],
+            "patience": dct["patience_"],
+            "monitor_only_val_losses": dct["monitor_only_val_losses_"],
+            "gradient_clipping": dct["gradient_clipping_"],
+            "learning_rate": dct["learning_rate_"],
+            "weight_decay": dct["weight_decay_"],
             # Other options
-            'projection': dct['projection_'],
-            'impute': dct['impute_'],
-            'outdir': dct['outdir_'],
-            'load': False
+            "projection": dct["projection_"],
+            "impute": dct["impute_"],
+            "outdir": dct["outdir_"],
+            "load": False,
         }
 
         return init_params
 
     ## Loss curve
-    def plot_loss_curves(self,
-                         title="Losses Curve"
-                         ) -> plt.figure:
+    def plot_loss_curves(self, title="Losses Curve") -> plt.figure:
         """
         Plot loss curves.
 
@@ -706,12 +740,9 @@ class GarfieldTrainer(BaseMixin):
         plt.title(title)
         plt.ylabel("loss")
         plt.xlabel("epoch")
-        plt.legend() # loc="upper right"
+        plt.legend()  # loc="upper right"
 
         # Retrieve figure
         fig = plt.gcf()
         plt.close()
         return fig
-
-
-

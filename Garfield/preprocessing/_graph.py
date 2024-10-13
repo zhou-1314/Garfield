@@ -11,8 +11,15 @@ import pynndescent
 
 from . import _utils as utils
 
-def get_nearest_neighbors(query_arr, target_arr, svd_components=None, randomized_svd=False, svd_runs=1,
-                          metric='correlation'):
+
+def get_nearest_neighbors(
+    query_arr,
+    target_arr,
+    svd_components=None,
+    randomized_svd=False,
+    svd_runs=1,
+    metric="correlation",
+):
     """
     For each row in query_arr, compute its nearest neighbor in target_arr.
 
@@ -43,12 +50,10 @@ def get_nearest_neighbors(query_arr, target_arr, svd_components=None, randomized
     target_arr = utils.convert_to_numpy(target_arr)
     arr = np.vstack([query_arr, target_arr])
     arr = utils.svd_embedding(
-        arr=arr, n_components=svd_components,
-        randomized=randomized_svd,
-        n_runs=svd_runs
+        arr=arr, n_components=svd_components, randomized=randomized_svd, n_runs=svd_runs
     )
-    query_arr = arr[:query_arr.shape[0], :]
-    pivot_arr = arr[query_arr.shape[0]:, :]
+    query_arr = arr[: query_arr.shape[0], :]
+    pivot_arr = arr[query_arr.shape[0] :, :]
     # approximate nearest neighbor search
     index = pynndescent.NNDescent(pivot_arr, n_neighbors=100, metric=metric)
     neighbors, dists = index.query(query_arr, k=50)

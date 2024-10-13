@@ -9,6 +9,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv, GATConv, GATv2Conv
 from .utils import DSBatchNorm, compute_cosine_similarity
 
+
 class GATDecoder(nn.Module):
     """
     Graph Attention Network (GAT) Decoder class.
@@ -40,8 +41,20 @@ class GATDecoder(nn.Module):
     used_DSBN : bool, optional
         Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
-    def __init__(self, in_channels, hidden_dims, out_channels, conv_type, num_heads, dropout, concat,
-                 num_domains='', used_edge_weight=False, used_DSBN=False):
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_dims,
+        out_channels,
+        conv_type,
+        num_heads,
+        dropout,
+        concat,
+        num_domains="",
+        used_edge_weight=False,
+        used_DSBN=False,
+    ):
         """
         Initializes the GATDecoder, which consists of multiple Graph Attention Network (GAT) layers
         followed by domain-specific normalization (if applicable).
@@ -52,9 +65,9 @@ class GATDecoder(nn.Module):
         self.layers = nn.ModuleList()
         self.norm = nn.ModuleList()
         self.dropout = dropout
-        if conv_type == 'GAT':
+        if conv_type == "GAT":
             GATLayer = GATConv
-        elif conv_type == 'GATv2Conv':
+        elif conv_type == "GATv2Conv":
             GATLayer = GATv2Conv
 
         num_hidden_layers = len(hidden_dims)
@@ -85,7 +98,7 @@ class GATDecoder(nn.Module):
                 heads=num_heads_list[i],
                 dropout=dropout_list[i],
                 concat=concat_list[i],
-                edge_dim=1 if self.used_edge_weight else None
+                edge_dim=1 if self.used_edge_weight else None,
             )
             self.layers.append(layer)
             if concat_list[i]:
@@ -94,12 +107,14 @@ class GATDecoder(nn.Module):
                 current_dim = hidden_dims[::-1][i]
 
         ### 数据集总重构的layers
-        self.conv_recon = GATLayer(in_channels=current_dim,
-                                   out_channels=out_channels,
-                                   heads=num_heads,
-                                   concat=False,
-                                   edge_dim=1 if self.used_edge_weight else None,
-                                   dropout=dropout)
+        self.conv_recon = GATLayer(
+            in_channels=current_dim,
+            out_channels=out_channels,
+            heads=num_heads,
+            concat=False,
+            edge_dim=1 if self.used_edge_weight else None,
+            dropout=dropout,
+        )
 
     def forward(self, x, data):
         """
@@ -122,21 +137,28 @@ class GATDecoder(nn.Module):
         # edge_weight = torch.ones(edge_index.shape[1]).cpu().numpy()  # 先将张量转移到CPU，再转为numpy
 
         for idx, layer in enumerate(self.layers):
-            x, _ = layer(x, edge_index, edge_attr=edge_weight if self.used_edge_weight else None,
-                         return_attention_weights=True)
+            x, _ = layer(
+                x,
+                edge_index,
+                edge_attr=edge_weight if self.used_edge_weight else None,
+                return_attention_weights=True,
+            )
             if self.used_DSBN:
                 if self.norm:
                     if len(x) == 1:
                         pass
-                    elif self.norm[0].__class__.__name__ == 'DSBatchNorm':
+                    elif self.norm[0].__class__.__name__ == "DSBatchNorm":
                         x = self.norm[idx](x, y)
                     else:
                         x = self.norm[idx](x)
                     x = F.relu(x)
 
-        recon_x, _ = self.conv_recon(x, edge_index,
-                                     edge_attr=edge_weight if self.used_edge_weight else None,
-                                     return_attention_weights=True)
+        recon_x, _ = self.conv_recon(
+            x,
+            edge_index,
+            edge_attr=edge_weight if self.used_edge_weight else None,
+            return_attention_weights=True,
+        )
 
         return recon_x
 
@@ -167,8 +189,17 @@ class GCNDecoder(nn.Module):
     used_DSBN : bool, optional
         Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
-    def __init__(self, in_channels, hidden_dims, out_channels, dropout=0.2,
-                 num_domains='', used_edge_weight=False, used_DSBN=False):
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_dims,
+        out_channels,
+        dropout=0.2,
+        num_domains="",
+        used_edge_weight=False,
+        used_DSBN=False,
+    ):
         """
         Initializes the GCNDecoder, consisting of multiple Graph Convolutional Network (GCN) layers followed by domain-specific normalization (if applicable).
         """
@@ -187,7 +218,9 @@ class GCNDecoder(nn.Module):
         hidden_dims = hidden_dims[::-1]  # 反转
         total_layers = [in_channels] + hidden_dims
         for i in range(len(total_layers) - 1):
-            gcn_layers.append(GCNConv(total_layers[i], total_layers[i + 1], dropout=dropout))
+            gcn_layers.append(
+                GCNConv(total_layers[i], total_layers[i + 1], dropout=dropout)
+            )
 
         # 使用 nn.ModuleList 以确保所有层都被正确注册
         self.gcn_layers = nn.ModuleList(gcn_layers)
@@ -204,8 +237,9 @@ class GCNDecoder(nn.Module):
                 if num_domains == 1:  # TO DO
                     norm = nn.BatchNorm1d(current_dim)
                 else:
-                    norm = DSBatchNorm(current_dim,
-                                       num_domains)  # num_domains >1 represent domain-specific batch normalization of n domain
+                    norm = DSBatchNorm(
+                        current_dim, num_domains
+                    )  # num_domains >1 represent domain-specific batch normalization of n domain
             else:
                 norm = None
             self.norm.append(norm)
@@ -232,23 +266,27 @@ class GCNDecoder(nn.Module):
 
         ### latent
         for idx, layer in enumerate(self.gcn_layers):
-            x = layer(x, edge_index,
-                      edge_weight=edge_weight if self.used_edge_weight else None)
+            x = layer(
+                x,
+                edge_index,
+                edge_weight=edge_weight if self.used_edge_weight else None,
+            )
 
             if self.used_DSBN:
                 if self.norm:
                     if len(x) == 1:
                         pass
-                    elif self.norm[0].__class__.__name__ == 'DSBatchNorm':
-                        print('Perform DSBN normalization...')
+                    elif self.norm[0].__class__.__name__ == "DSBatchNorm":
+                        print("Perform DSBN normalization...")
                         x = self.norm[idx](x, y)
                     else:
-                        print('Perform batch normalization...')
+                        print("Perform batch normalization...")
                         x = self.norm[idx](x)
                     x = F.relu(x)
 
-        x_recon = self.gcn_recon(x, edge_index,
-                                 edge_weight=edge_weight if self.used_edge_weight else None)
+        x_recon = self.gcn_recon(
+            x, edge_index, edge_weight=edge_weight if self.used_edge_weight else None
+        )
 
         return x_recon
 
@@ -271,16 +309,13 @@ class CosineSimGraphDecoder(nn.Module):
         Probability of nodes to be dropped during training.
     """
 
-    def __init__(self,
-                 dropout_rate: float = 0.):
+    def __init__(self, dropout_rate: float = 0.0):
         super().__init__()
-        print("COSINE SIM GRAPH DECODER -> "
-              f"dropout_rate: {dropout_rate}")
+        print("COSINE SIM GRAPH DECODER -> " f"dropout_rate: {dropout_rate}")
 
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self,
-                z: torch.Tensor) -> torch.Tensor:
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the cosine similarity graph decoder.
 
@@ -300,6 +335,6 @@ class CosineSimGraphDecoder(nn.Module):
 
         # Compute element-wise cosine similarity
         edge_recon_logits = compute_cosine_similarity(
-            z[:int(z.shape[0] / 2)],  # ´edge_label_index[0]´
-            z[int(z.shape[0] / 2):])  # ´edge_label_index[1]´
+            z[: int(z.shape[0] / 2)], z[int(z.shape[0] / 2) :]  # ´edge_label_index[0]´
+        )  # ´edge_label_index[1]´
         return edge_recon_logits

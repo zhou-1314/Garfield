@@ -14,17 +14,18 @@ import torch
 import scanpy as sc
 from anndata import AnnData, concat
 
+
 class BaseMixin:
-    """ Adapted from
-        Title: scvi-tools
-        Authors: Romain Lopez <romain_lopez@gmail.com>,
-                 Adam Gayoso <adamgayoso@berkeley.edu>,
-                 Galen Xing <gx2113@columbia.edu>
-        Date: 14.12.2020
-        Code version: 0.8.0-beta.0
-        Availability: https://github.com/YosefLab/scvi-tools
-        Link to the used code:
-        https://github.com/YosefLab/scvi-tools/blob/0.8.0-beta.0/scvi/core/models/base.py
+    """Adapted from
+    Title: scvi-tools
+    Authors: Romain Lopez <romain_lopez@gmail.com>,
+             Adam Gayoso <adamgayoso@berkeley.edu>,
+             Galen Xing <gx2113@columbia.edu>
+    Date: 14.12.2020
+    Code version: 0.8.0-beta.0
+    Availability: https://github.com/YosefLab/scvi-tools
+    Link to the used code:
+    https://github.com/YosefLab/scvi-tools/blob/0.8.0-beta.0/scvi/core/models/base.py
     """
 
     def _get_user_attributes(self):
@@ -42,25 +43,25 @@ class BaseMixin:
         return public_attributes
 
     def save(
-            self,
-            dir_path: str,
-            overwrite: bool = False,
-            save_anndata: bool = True,
-            **anndata_write_kwargs,
+        self,
+        dir_path: str,
+        overwrite: bool = False,
+        save_anndata: bool = True,
+        **anndata_write_kwargs,
     ):
         """Save the state of the model.
-           Neither the trainer optimizer state nor the trainer history are saved.
-           Parameters
-           ----------
-           dir_path
-                Path to a directory.
-           overwrite
-                Overwrite existing data or not. If `False` and directory
-                already exists at `dir_path`, error will be raised.
-           save_anndata
-                If True, also saves the anndata
-           anndata_write_kwargs
-                Kwargs for anndata write function
+        Neither the trainer optimizer state nor the trainer history are saved.
+        Parameters
+        ----------
+        dir_path
+             Path to a directory.
+        overwrite
+             Overwrite existing data or not. If `False` and directory
+             already exists at `dir_path`, error will be raised.
+        save_anndata
+             If True, also saves the anndata
+        anndata_write_kwargs
+             Kwargs for anndata write function
         """
         # get all the public attributes
         public_attributes = self._get_public_attributes()
@@ -99,7 +100,9 @@ class BaseMixin:
         new_state_dict = self.model.state_dict()
 
         # 创建一个新的状态字典，仅包括在 new_state_dict 中也存在的键
-        load_state_dict = {k: v for k, v in load_state_dict.items() if k in new_state_dict}
+        load_state_dict = {
+            k: v for k, v in load_state_dict.items() if k in new_state_dict
+        }
 
         for key, ten in new_state_dict.items():
             if key not in load_state_dict:
@@ -131,6 +134,7 @@ class BaseMixin:
 
         return attr_dict, model_state_dict, var_names
 
+
 class UnpicklerCpu(pickle.Unpickler):
     """Helps to pickle.load a model trained on GPU to CPU.
 
@@ -138,7 +142,7 @@ class UnpicklerCpu(pickle.Unpickler):
     """
 
     def find_class(self, module, name):
-        if module == 'torch.storage' and name == '_load_from_bytes':
-            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+        if module == "torch.storage" and name == "_load_from_bytes":
+            return lambda b: torch.load(io.BytesIO(b), map_location="cpu")
         else:
             return super().find_class(module, name)

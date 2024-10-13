@@ -18,4 +18,3 @@ python:
 submodules:
     include: [docs/source/tutorial]
     recursive: true
-

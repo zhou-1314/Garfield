@@ -5,14 +5,14 @@
 
 .. autoclass:: Garfield
 
-   
+
    .. automethod:: __init__
 
-   
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Garfield.__init__
       ~Garfield.add_module
       ~Garfield.apply
@@ -66,18 +66,16 @@
       ~Garfield.type
       ~Garfield.xpu
       ~Garfield.zero_grad
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~Garfield.T_destination
       ~Garfield.call_super_init
       ~Garfield.dump_patches
       ~Garfield.training
-   
-   

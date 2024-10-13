@@ -12,10 +12,11 @@ from matplotlib.ticker import MaxNLocator
 
 
 def eval_metrics(
-        edge_recon_probs: Union[torch.Tensor, np.ndarray],
-        edge_labels: Union[torch.Tensor, np.ndarray],
-        omics_recon_pred: Union[torch.Tensor, np.ndarray]=None,
-        omics_recon_truth: Union[torch.Tensor, np.ndarray]=None) -> dict:
+    edge_recon_probs: Union[torch.Tensor, np.ndarray],
+    edge_labels: Union[torch.Tensor, np.ndarray],
+    omics_recon_pred: Union[torch.Tensor, np.ndarray] = None,
+    omics_recon_truth: Union[torch.Tensor, np.ndarray] = None,
+) -> dict:
     """
     Get the evaluation metrics for a (balanced) sample of positive and negative
     edges and a sample of nodes.
@@ -50,13 +51,14 @@ def eval_metrics(
     if omics_recon_pred is not None and omics_recon_truth is not None:
         # Calculate the gene expression mean squared error
         eval_dict["gene_expr_mse_score"] = skm.mean_squared_error(
-            omics_recon_truth,
-            omics_recon_pred)
+            omics_recon_truth, omics_recon_pred
+        )
 
     # Calculate threshold independent metrics
     eval_dict["auroc_score"] = skm.roc_auc_score(edge_labels, edge_recon_probs)
-    eval_dict["auprc_score"] = skm.average_precision_score(edge_labels,
-                                                           edge_recon_probs)
+    eval_dict["auprc_score"] = skm.average_precision_score(
+        edge_labels, edge_recon_probs
+    )
 
     # Get the optimal classification probability threshold above which an edge
     # is classified as positive so that the threshold optimizes the accuracy

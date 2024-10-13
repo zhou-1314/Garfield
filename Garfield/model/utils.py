@@ -35,6 +35,7 @@ def save_model_with_fallback(model, file_path):
             dill.dump(model, f)
         print(f"Model saved successfully using dill at {file_path}")
 
+
 def load_model_with_fallback(file_path):
     try:
         # 尝试使用 pickle 加载
@@ -51,11 +52,12 @@ def load_model_with_fallback(file_path):
     return model
 
 
-def load_saved_files(dir_path: str,
-                     query_adata: Optional[AnnData] = None,
-                     ref_adata_name: str = "adata_ref.h5ad",
-                     map_location: Optional[Literal["cpu", "cuda"]] = None
-                     ) -> Tuple[OrderedDict, dict, np.ndarray, ad.AnnData]:
+def load_saved_files(
+    dir_path: str,
+    query_adata: Optional[AnnData] = None,
+    ref_adata_name: str = "adata_ref.h5ad",
+    map_location: Optional[Literal["cpu", "cuda"]] = None,
+) -> Tuple[OrderedDict, dict, np.ndarray, ad.AnnData]:
     """
     Helper to load saved model files.
 
@@ -98,7 +100,11 @@ def load_saved_files(dir_path: str,
 
     if os.path.exists(adata_path):
         adata_ref = ad.read(adata_path)
-        adata_ref.X = adata_ref.layers["counts"].copy() if "counts" in adata_ref.layers.keys() else adata_ref.X
+        adata_ref.X = (
+            adata_ref.layers["counts"].copy()
+            if "counts" in adata_ref.layers.keys()
+            else adata_ref.X
+        )
     else:
         raise ValueError("Dir path contains no saved reference anndata")
 
@@ -107,10 +113,10 @@ def load_saved_files(dir_path: str,
         query_adata = validate_var_names(query_adata, var_names)
         adata_concat = concat(
             [adata_ref, query_adata],
-            label='projection',
-            keys=['reference', 'query'],
+            label="projection",
+            keys=["reference", "query"],
             index_unique=None,
-            join='outer'
+            join="outer",
         )
     else:
         adata_concat = None
@@ -126,11 +132,15 @@ def validate_var_names(adata, source_var_names):
     # Warning for gene percentage
     user_var_names = adata.var_names
     try:
-        percentage = (len(user_var_names.intersection(source_var_names)) / len(user_var_names)) * 100
+        percentage = (
+            len(user_var_names.intersection(source_var_names)) / len(user_var_names)
+        ) * 100
         percentage = round(percentage, 4)
         if percentage != 100:
-            logger.warning(f"WARNING: Query shares {percentage}% of its genes with the reference."
-                           "This may lead to inaccuracy in the results.")
+            logger.warning(
+                f"WARNING: Query shares {percentage}% of its genes with the reference."
+                "This may lead to inaccuracy in the results."
+            )
     except Exception:
         logger.warning("WARNING: Something is wrong with the reference genes.")
 
@@ -144,9 +154,11 @@ def validate_var_names(adata, source_var_names):
             ref_genes_not_in_query.append(name)
 
     if len(ref_genes_not_in_query) > 0:
-        print("Query data is missing expression data of ",
-              len(ref_genes_not_in_query),
-              " genes which were contained in the reference dataset.")
+        print(
+            "Query data is missing expression data of ",
+            len(ref_genes_not_in_query),
+            " genes which were contained in the reference dataset.",
+        )
         print("The missing information will be filled with zeroes.")
 
         filling_X = np.zeros((len(adata), len(ref_genes_not_in_query)))
@@ -165,13 +177,15 @@ def validate_var_names(adata, source_var_names):
             "Query data contains expression data of ",
             len(user_var_names) - (len(source_var_names) - len(ref_genes_not_in_query)),
             " genes that were not contained in the reference dataset. This information "
-            "will be removed from the query data object for further processing.")
+            "will be removed from the query data object for further processing.",
+        )
 
         # remove unseen gene information and order anndata
         new_adata = new_adata[:, source_var_names].copy()
 
     print(new_adata)
     return new_adata
+
 
 def weighted_knn_trainer(train_adata, train_adata_emb, n_neighbors=50):
     """
@@ -187,9 +201,7 @@ def weighted_knn_trainer(train_adata, train_adata_emb, n_neighbors=50):
     n_neighbors: int
         Number of nearest neighbors in KNN classifier.
     """
-    print(
-        f"Weighted KNN with n_neighbors = {n_neighbors} ... "
-    )
+    print(f"Weighted KNN with n_neighbors = {n_neighbors} ... ")
     k_neighbors_transformer = KNeighborsTransformer(
         n_neighbors=n_neighbors,
         mode="distance",
@@ -207,6 +219,7 @@ def weighted_knn_trainer(train_adata, train_adata_emb, n_neighbors=50):
         )
     k_neighbors_transformer.fit(train_emb)
     return k_neighbors_transformer
+
 
 def weighted_knn_transfer(
     query_adata,
@@ -297,12 +310,12 @@ def weighted_knn_transfer(
                 pred_label = best_label
 
             if mode == "package":
-                uncertainties.iloc[i][j] = (max(1 - best_prob, 0))
+                uncertainties.iloc[i][j] = max(1 - best_prob, 0)
 
             else:
                 raise Exception("Inquery Mode!")
 
-            pred_labels.iloc[i][j] = (pred_label)
+            pred_labels.iloc[i][j] = pred_label
 
     print("Label transfer finished!", flush=True)
 

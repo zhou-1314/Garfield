@@ -64,4 +64,3 @@ or::
 After a correct installation, you should be able to import the module without errors::
 
     import Garfield as gf
-

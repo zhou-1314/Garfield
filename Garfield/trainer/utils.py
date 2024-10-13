@@ -33,14 +33,17 @@ class EarlyStopping:
         the learning rate is adjusted.
     lr_factor:
         Scaling factor for adjusting the learning rate.
-     """
-    def __init__(self,
-                 early_stopping_metric: str = "val_global_loss",
-                 metric_improvement_threshold: float = 0.,
-                 patience: int = 8,
-                 reduce_lr_on_plateau: bool = True,
-                 lr_patience: int = 4,
-                 lr_factor: float = 0.1):
+    """
+
+    def __init__(
+        self,
+        early_stopping_metric: str = "val_global_loss",
+        metric_improvement_threshold: float = 0.0,
+        patience: int = 8,
+        reduce_lr_on_plateau: bool = True,
+        lr_patience: int = 4,
+        lr_factor: float = 0.1,
+    ):
         self.early_stopping_metric = early_stopping_metric
         self.metric_improvement_threshold = metric_improvement_threshold
         self.patience = patience
@@ -59,8 +62,7 @@ class EarlyStopping:
 
         # Calculate metric improvement
         self.current_performance = current_metric
-        metric_improvement = (self.best_performance -
-                              self.current_performance)
+        metric_improvement = self.best_performance - self.current_performance
         # Update best performance
         if metric_improvement > 0:
             self.best_performance = self.current_performance
@@ -86,19 +88,27 @@ class EarlyStopping:
             elif self.epochs_not_improved_lr >= self.lr_patience:
                 reduce_lr = True
                 self.epochs_not_improved_lr = 0
-                print("\nReducing learning rate: metric has not improved more "
-                      f"than {self.metric_improvement_threshold} in the last "
-                      f"{self.lr_patience} epochs.")
+                print(
+                    "\nReducing learning rate: metric has not improved more "
+                    f"than {self.metric_improvement_threshold} in the last "
+                    f"{self.lr_patience} epochs."
+                )
             else:
                 reduce_lr = False
             continue_training = True
         if not continue_training:
-            print("\nStopping early: metric has not improved more than "
-                  + str(self.metric_improvement_threshold) +
-                  " in the last " + str(self.patience) + " epochs.")
-            print("If the early stopping criterion is too strong, "
-                  "please instantiate it with different parameters "
-                  "in the train method.")
+            print(
+                "\nStopping early: metric has not improved more than "
+                + str(self.metric_improvement_threshold)
+                + " in the last "
+                + str(self.patience)
+                + " epochs."
+            )
+            print(
+                "If the early stopping criterion is too strong, "
+                "please instantiate it with different parameters "
+                "in the train method."
+            )
         return continue_training, reduce_lr
 
     def update_state(self, current_metric: float) -> bool:
@@ -133,21 +143,25 @@ def print_progress(epoch: int, logs: dict, n_epochs: int):
     message = message[:-2] + "\n"
 
     # Display progress bar
-    _print_progress_bar(epoch + 1,
-                        n_epochs,
-                        prefix=f"Epoch {epoch + 1}/{n_epochs}",
-                        suffix=message,
-                        decimals=1,
-                        length=20)
+    _print_progress_bar(
+        epoch + 1,
+        n_epochs,
+        prefix=f"Epoch {epoch + 1}/{n_epochs}",
+        suffix=message,
+        decimals=1,
+        length=20,
+    )
 
 
-def _print_progress_bar(epoch: int,
-                        n_epochs: int,
-                        prefix: str = "",
-                        suffix: str = "",
-                        decimals: int = 1,
-                        length: int = 100,
-                        fill: str = "█"):
+def _print_progress_bar(
+    epoch: int,
+    n_epochs: int,
+    prefix: str = "",
+    suffix: str = "",
+    decimals: int = 1,
+    length: int = 100,
+    fill: str = "█",
+):
     """
     Print out a message with a progress bar.
 
@@ -172,14 +186,14 @@ def _print_progress_bar(epoch: int,
     fill:
          Symbol for filling the bar.
     """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (
-            epoch / float(n_epochs)))
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (epoch / float(n_epochs)))
     filled_len = int(length * epoch // n_epochs)
-    bar = fill * filled_len + '-' * (length - filled_len)
+    bar = fill * filled_len + "-" * (length - filled_len)
     sys.stdout.write("\r%s |%s| %s%s %s" % (prefix, bar, percent, "%", suffix)),
     if epoch == n_epochs:
         sys.stdout.write("\n")
     sys.stdout.flush()
+
 
 def _cycle_iterable(iterable):
     iterator = iter(iterable)

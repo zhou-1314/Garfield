@@ -11,6 +11,7 @@ from torch_geometric.nn import GCNConv, GATConv, GATv2Conv
 
 from .utils import DSBatchNorm, drop_feature
 
+
 class Projection(nn.Module):
     def __init__(self, in_dim: int, encoder_dim: int):
         """
@@ -89,9 +90,24 @@ class GATEncoder(nn.Module):
     used_DSBN : bool, optional
         Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
-    def __init__(self, in_channels, hidden_dims, latent_dim, conv_type, use_FCencoder,
-                 drop_feature_rate, drop_edge_rate, svd_q, num_heads, dropout, concat,
-                 num_domains=1, used_edge_weight=False, used_DSBN=False):
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_dims,
+        latent_dim,
+        conv_type,
+        use_FCencoder,
+        drop_feature_rate,
+        drop_edge_rate,
+        svd_q,
+        num_heads,
+        dropout,
+        concat,
+        num_domains=1,
+        used_edge_weight=False,
+        used_DSBN=False,
+    ):
         """
         Initializes the GATEncoder with multiple Graph Attention Network (GAT) layers, normalization layers,
         and optional fully connected (FC) encoder.
@@ -107,7 +123,7 @@ class GATEncoder(nn.Module):
         self.norm_layers = nn.ModuleList()
 
         # Choose GAT layer type based on `conv_type`
-        GATLayer = GATConv if conv_type == 'GAT' else GATv2Conv
+        GATLayer = GATConv if conv_type == "GAT" else GATv2Conv
 
         # Initialize normalization layers based on `num_domains`
         for hidden_dim in hidden_dims:
@@ -134,7 +150,7 @@ class GATEncoder(nn.Module):
                 heads=num_heads,
                 dropout=dropout,
                 concat=concat,
-                edge_dim=1 if self.used_edge_weight else None
+                edge_dim=1 if self.used_edge_weight else None,
             )
             self.layers.append(layer)
             current_dim = hidden_dim * num_heads if concat else hidden_dim
@@ -146,7 +162,7 @@ class GATEncoder(nn.Module):
             heads=num_heads,
             concat=False,
             edge_dim=1 if self.used_edge_weight else None,
-            dropout=dropout
+            dropout=dropout,
         )
         self.conv_log_std = GATLayer(
             in_channels=current_dim,
@@ -154,7 +170,7 @@ class GATEncoder(nn.Module):
             heads=num_heads,
             concat=False,
             edge_dim=1 if self.used_edge_weight else None,
-            dropout=dropout
+            dropout=dropout,
         )
 
     def forward(self, data, decoder_type, augment_type):
@@ -188,18 +204,18 @@ class GATEncoder(nn.Module):
         edge_index = edge_index_all[:, :2]
 
         if decoder_type == "omics":
-            if augment_type is not None and augment_type == 'dropout':
+            if augment_type is not None and augment_type == "dropout":
                 edge_weight = edge_index_all[:, 2] if self.used_edge_weight else None
                 x_aug = drop_feature(x=x, drop_prob=self.drop_feature_rate)
                 edge_index_aug = dropout_adj(edge_index, p=self.drop_edge_rate)[0]
                 edge_weight_aug = edge_weight
-            elif augment_type is not None and augment_type == 'svd':
+            elif augment_type is not None and augment_type == "svd":
                 edge_weight = edge_index_all[:, 2].float()
                 num_nodes = int(edge_index.max().item()) + 1
                 sparse_adj = torch.sparse_coo_tensor(
                     indices=edge_index.t(),
                     values=edge_weight,
-                    size=(num_nodes, num_nodes)
+                    size=(num_nodes, num_nodes),
                 )
                 u, s, v = torch.svd_lowrank(sparse_adj, q=self.svd_q)
                 recon_adj = (u @ torch.diag(s)) @ v.T
@@ -215,22 +231,31 @@ class GATEncoder(nn.Module):
                 x = self.proj(x)
                 x_aug = self.proj(x_aug)
 
-            if not self.used_edge_weight and augment_type == 'svd':
+            if not self.used_edge_weight and augment_type == "svd":
                 edge_weight = None
                 edge_weight_aug = None
-            z_mean1, z_log_std1 = self._forward_through_layers(x, edge_index, edge_weight, y)
-            z_mean2, z_log_std2 = self._forward_through_layers(x_aug, edge_index_aug, edge_weight_aug, y)
+            z_mean1, z_log_std1 = self._forward_through_layers(
+                x, edge_index, edge_weight, y
+            )
+            z_mean2, z_log_std2 = self._forward_through_layers(
+                x_aug, edge_index_aug, edge_weight_aug, y
+            )
 
             return z_mean1, z_log_std1, z_mean2, z_log_std2
 
         elif decoder_type == "graph":
-            edge_weight = torch.ones(edge_index.shape[1]).unsqueeze(1).to(
-                edge_index.device) if self.used_edge_weight else None
+            edge_weight = (
+                torch.ones(edge_index.shape[1]).unsqueeze(1).to(edge_index.device)
+                if self.used_edge_weight
+                else None
+            )
 
             if self.use_FCencoder:
                 x = self.proj(x)
 
-            z_mean1, z_log_std1 = self._forward_through_layers(x, edge_index, edge_weight, y)
+            z_mean1, z_log_std1 = self._forward_through_layers(
+                x, edge_index, edge_weight, y
+            )
             return z_mean1, z_log_std1
 
         else:
@@ -258,8 +283,12 @@ class GATEncoder(nn.Module):
             - z_log_std: Log standard deviation of the latent space (shape: [num_nodes, latent_dim]).
         """
         for idx, layer in enumerate(self.layers):
-            x, _ = layer(x, edge_index, edge_attr=edge_weight if self.used_edge_weight else None,
-                         return_attention_weights=True)
+            x, _ = layer(
+                x,
+                edge_index,
+                edge_attr=edge_weight if self.used_edge_weight else None,
+                return_attention_weights=True,
+            )
             if self.used_DSBN and len(x) > 1:
                 norm_layer = self.norm_layers[idx]
                 if isinstance(norm_layer, DSBatchNorm):
@@ -268,10 +297,18 @@ class GATEncoder(nn.Module):
                     x = norm_layer(x)
             x = F.relu(x)
 
-        z_mean, _ = self.conv_mean(x, edge_index, edge_attr=edge_weight if self.used_edge_weight else None,
-                                   return_attention_weights=True)
-        z_log_std, _ = self.conv_log_std(x, edge_index, edge_attr=edge_weight if self.used_edge_weight else None,
-                                         return_attention_weights=True)
+        z_mean, _ = self.conv_mean(
+            x,
+            edge_index,
+            edge_attr=edge_weight if self.used_edge_weight else None,
+            return_attention_weights=True,
+        )
+        z_log_std, _ = self.conv_log_std(
+            x,
+            edge_index,
+            edge_attr=edge_weight if self.used_edge_weight else None,
+            return_attention_weights=True,
+        )
 
         return z_mean, z_log_std
 
@@ -318,9 +355,21 @@ class GCNEncoder(nn.Module):
     used_DSBN : bool, optional
         Whether to use domain-specific batch normalization (DSBN). Default is False.
     """
-    def __init__(self, in_channels, hidden_dims, latent_dim, use_FCencoder,
-                 drop_feature_rate, drop_edge_rate, svd_q, dropout=0.2,
-                 num_domains=1, used_edge_weight=False, used_DSBN=False):
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_dims,
+        latent_dim,
+        use_FCencoder,
+        drop_feature_rate,
+        drop_edge_rate,
+        svd_q,
+        dropout=0.2,
+        num_domains=1,
+        used_edge_weight=False,
+        used_DSBN=False,
+    ):
         """
         Initializes the GCNEncoder with configurable options for feature projection, dropout, and domain-specific batch normalization (DSBN).
         """
@@ -346,7 +395,9 @@ class GCNEncoder(nn.Module):
         self.gcn_layers = nn.ModuleList()
         total_layers = [current_dim] + hidden_dims
         for i in range(len(total_layers) - 1):
-            self.gcn_layers.append(GCNConv(total_layers[i], total_layers[i + 1], dropout=dropout))
+            self.gcn_layers.append(
+                GCNConv(total_layers[i], total_layers[i + 1], dropout=dropout)
+            )
 
         # Initialize mean and log standard deviation layers
         self.gcn_mu = GCNConv(hidden_dims[-1], latent_dim, dropout=dropout)
@@ -390,18 +441,18 @@ class GCNEncoder(nn.Module):
         edge_index = edge_index_all[:, :2]
 
         if decoder_type == "omics":
-            if augment_type is not None and augment_type == 'dropout':
+            if augment_type is not None and augment_type == "dropout":
                 edge_weight = edge_index_all[:, 2] if self.used_edge_weight else None
                 x_aug = drop_feature(x=x, drop_prob=self.drop_feature_rate)
                 edge_index_aug = dropout_adj(edge_index, p=self.drop_edge_rate)[0]
                 edge_weight_aug = edge_weight
-            elif augment_type is not None and augment_type == 'svd':
+            elif augment_type is not None and augment_type == "svd":
                 edge_weight = edge_index_all[:, 2].float()
                 num_nodes = int(edge_index.max().item()) + 1
                 sparse_adj = torch.sparse_coo_tensor(
                     indices=edge_index.t(),
                     values=edge_weight,
-                    size=(num_nodes, num_nodes)
+                    size=(num_nodes, num_nodes),
                 )
                 u, s, v = torch.svd_lowrank(sparse_adj, q=self.svd_q)
                 recon_adj = (u @ torch.diag(s)) @ v.T
@@ -417,22 +468,31 @@ class GCNEncoder(nn.Module):
                 x = self.proj(x)
                 x_aug = self.proj(x_aug)
 
-            if not self.used_edge_weight and augment_type == 'svd':
+            if not self.used_edge_weight and augment_type == "svd":
                 edge_weight = None
                 edge_weight_aug = None
-            z_mean1, z_log_std1 = self._forward_through_layers(x, edge_index, edge_weight, y)
-            z_mean2, z_log_std2 = self._forward_through_layers(x_aug, edge_index_aug, edge_weight_aug, y)
+            z_mean1, z_log_std1 = self._forward_through_layers(
+                x, edge_index, edge_weight, y
+            )
+            z_mean2, z_log_std2 = self._forward_through_layers(
+                x_aug, edge_index_aug, edge_weight_aug, y
+            )
 
             return z_mean1, z_log_std1, z_mean2, z_log_std2
 
         elif decoder_type == "graph":
-            edge_weight = torch.ones(edge_index.shape[1]).unsqueeze(1).to(
-                edge_index.device) if self.used_edge_weight else None
+            edge_weight = (
+                torch.ones(edge_index.shape[1]).unsqueeze(1).to(edge_index.device)
+                if self.used_edge_weight
+                else None
+            )
 
             if self.use_FCencoder:
                 x = self.proj(x)
 
-            z_mean1, z_log_std1 = self._forward_through_layers(x, edge_index, edge_weight, y)
+            z_mean1, z_log_std1 = self._forward_through_layers(
+                x, edge_index, edge_weight, y
+            )
             return z_mean1, z_log_std1
 
         else:
@@ -493,5 +553,3 @@ class GCNEncoder(nn.Module):
             else:
                 x = norm_layer(x)
         return x
-
-

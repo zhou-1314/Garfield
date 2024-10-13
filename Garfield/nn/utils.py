@@ -5,14 +5,15 @@ import torch.nn as nn
 
 # mask feature function
 def drop_feature(x, drop_prob):
-    drop_mask = torch.empty(
-        (x.size(1), ),
-        dtype=torch.float32,
-        device=x.device).uniform_(0, 1) < drop_prob
+    drop_mask = (
+        torch.empty((x.size(1),), dtype=torch.float32, device=x.device).uniform_(0, 1)
+        < drop_prob
+    )
     x = x.clone()
     x[:, drop_mask] = 0
 
     return x
+
 
 # Domain-specific Batch Normalization（领域特定的批次归一化）是一种调整神经网络中批次归一化层以适应不同输入数据源或领域的技术。
 class DSBatchNorm(nn.Module):
@@ -30,13 +31,18 @@ class DSBatchNorm(nn.Module):
     momentum
         the value used for the running_mean and running_var computation
     """
+
     def __init__(self, num_features, n_domain, eps=1e-5, momentum=0.1):
         super().__init__()
         self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
         self.n_domain = n_domain
         self.num_features = num_features
         self.bns = nn.ModuleList(
-            [nn.BatchNorm1d(num_features, eps=eps, momentum=momentum) for i in range(n_domain)]).to(self.device)
+            [
+                nn.BatchNorm1d(num_features, eps=eps, momentum=momentum)
+                for i in range(n_domain)
+            ]
+        ).to(self.device)
 
     def reset_running_stats(self):
         for bn in self.bns:
@@ -51,7 +57,9 @@ class DSBatchNorm(nn.Module):
 
     def forward(self, x, y):
         device = x.device  # 获取输入数据的设备
-        out = torch.zeros(x.size(0), self.num_features, device=device)  # , requires_grad=False)
+        out = torch.zeros(
+            x.size(0), self.num_features, device=device
+        )  # , requires_grad=False)
         for i in range(self.n_domain):
             indices = np.where(y.cpu().numpy() == i)[0]
             if len(indices) > 1:
@@ -63,9 +71,9 @@ class DSBatchNorm(nn.Module):
         return out
 
 
-def compute_cosine_similarity(tensor1: torch.Tensor,
-                              tensor2: torch.Tensor,
-                              eps: float = 1e-8) -> torch.Tensor:
+def compute_cosine_similarity(
+    tensor1: torch.Tensor, tensor2: torch.Tensor, eps: float = 1e-8
+) -> torch.Tensor:
     """
     Compute the element-wise cosine similarity between two 2D tensors.
 
@@ -87,8 +95,10 @@ def compute_cosine_similarity(tensor1: torch.Tensor,
     tensor1_norm = tensor1.norm(dim=1)[:, None]
     tensor2_norm = tensor2.norm(dim=1)[:, None]
     tensor1_normalized = tensor1 / torch.max(
-        tensor1_norm, eps * torch.ones_like(tensor1_norm))
+        tensor1_norm, eps * torch.ones_like(tensor1_norm)
+    )
     tensor2_normalized = tensor2 / torch.max(
-        tensor2_norm, eps * torch.ones_like(tensor2_norm))
+        tensor2_norm, eps * torch.ones_like(tensor2_norm)
+    )
     cosine_sim = torch.mul(tensor1_normalized, tensor2_normalized).sum(1)
     return cosine_sim

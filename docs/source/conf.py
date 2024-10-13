@@ -15,15 +15,15 @@ import sys
 from datetime import datetime
 
 # sys.path.insert(0, os.path.abspath('./Garfield'))
-sys.path.insert(0, os.path.abspath('../Garfield'))
-sys.path.insert(0, os.path.abspath('_ext'))
+sys.path.insert(0, os.path.abspath("../Garfield"))
+sys.path.insert(0, os.path.abspath("_ext"))
 
 import Garfield  # noqa: E402
 
 # -- Project information -----------------------------------------------------
-project = 'Garfield'
-author = 'Weige Zhou'
-copyright = f'{datetime.now():%Y}, {author}.'
+project = "Garfield"
+author = "Weige Zhou"
+copyright = f"{datetime.now():%Y}, {author}."
 
 # The full version, including alpha/beta/rc tags
 release = Garfield.__version__
@@ -38,9 +38,9 @@ needs_sphinx = "3.0"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    'sphinx.ext.napoleon',
-    'sphinx.ext.doctest',
-    'sphinx.ext.coverage',
+    "sphinx.ext.napoleon",
+    "sphinx.ext.doctest",
+    "sphinx.ext.coverage",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
@@ -48,9 +48,9 @@ extensions = [
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinxext.opengraph",
     "nbsphinx",
-    'sphinx_copybutton',
+    "sphinx_copybutton",
     "edit_on_github",
-    ]
+]
 
 # Generate the API documentation when building
 autosummary_generate = True
@@ -64,12 +64,12 @@ napoleon_use_rtype = True  # having a separate entry generally helps readability
 napoleon_use_param = True
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build']
+exclude_patterns = ["_build"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -77,21 +77,21 @@ exclude_patterns = ['_build']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "navigation_depth": 1,
     "titles_only": True,
-    'logo_only': True,
+    "logo_only": True,
 }
 html_context = dict(
-    github_user='zhou-1314',  # Username
-    github_repo='Garfield',  # Repo name
-    github_version='main',  # Version
-    conf_py_path='/docs/',  # Path in the checkout to the docs root
+    github_user="zhou-1314",  # Username
+    github_repo="Garfield",  # Repo name
+    github_version="main",  # Version
+    conf_py_path="/docs/",  # Path in the checkout to the docs root
 )
 html_show_sphinx = False
-html_logo = '_static/img/logo_garfield.png'
-html_favicon = '_static/img/garfield_icon.svg'
+html_logo = "_static/img/logo_garfield.png"
+html_favicon = "_static/img/garfield_icon.svg"
 # github_repo = 'Garfield'
 # github_nb_repo = 'Garfield_tutorials'
 
@@ -100,4 +100,4 @@ html_favicon = '_static/img/garfield_icon.svg'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 
-html_static_path = ['_static']
+html_static_path = ["_static"]

@@ -18,7 +18,7 @@ from sklearn.preprocessing import LabelEncoder
 from torch_geometric.utils import add_self_loops, remove_self_loops
 
 
-class GraphAnnTorchDataset():
+class GraphAnnTorchDataset:
     """
     Spatially annotated torch dataset class to extract node features, node
     labels, adjacency matrix and edge indices in a standardized format from an
@@ -36,19 +36,24 @@ class GraphAnnTorchDataset():
         If ´True´, add self loops to the adjacency matrix to model autocrine
         communication.
     """
-    def __init__(self,
-                 adata, # : AnnData,
-                 label_name: str = None,
-                 adj_key: Literal["spatial_connectivities", "connectivities"]="spatial_connectivities",
-                 edge_label_adj_key: str = "edge_label_spatial_connectivities",
-                 used_feat: bool = False,
-                 self_loops: bool = True):
+
+    def __init__(
+        self,
+        adata,  # : AnnData,
+        label_name: str = None,
+        adj_key: Literal[
+            "spatial_connectivities", "connectivities"
+        ] = "spatial_connectivities",
+        edge_label_adj_key: str = "edge_label_spatial_connectivities",
+        used_feat: bool = False,
+        self_loops: bool = True,
+    ):
         super(GraphAnnTorchDataset, self).__init__()
 
         if not used_feat:
             x = adata.X
         else:
-            x = np.array(adata.obsm['feat'])
+            x = np.array(adata.obsm["feat"])
 
         # Store features in dense format
         if sp.issparse(x):
@@ -60,9 +65,9 @@ class GraphAnnTorchDataset():
         if label_name is not None:
             label_encoder = LabelEncoder()
             try:
-                meta = np.array(adata.obs[label_name].astype('str'))
+                meta = np.array(adata.obs[label_name].astype("str"))
             except KeyError:
-                meta = np.array(adata.obs['rna:' + label_name].astype('str'))
+                meta = np.array(adata.obs["rna:" + label_name].astype("str"))
             meta = label_encoder.fit_transform(meta)
             # meta = meta.astype(np.float32)
             inverse = label_encoder.inverse_transform(range(0, np.max(meta) + 1))
@@ -74,8 +79,7 @@ class GraphAnnTorchDataset():
         if sp.issparse(adata.obsp[adj_key]):
             self.adj = sparse_mx_to_sparse_tensor(adata.obsp[adj_key])
         else:
-            self.adj = sparse_mx_to_sparse_tensor(
-                sp.csr_matrix(adata.obsp[adj_key]))
+            self.adj = sparse_mx_to_sparse_tensor(sp.csr_matrix(adata.obsp[adj_key]))
 
         # Store edge label adjacency matrix
         if edge_label_adj_key in adata.obsp:
@@ -84,7 +88,7 @@ class GraphAnnTorchDataset():
             self.edge_label_adj = None
 
         # Validate adjacency matrix symmetry
-        if (self.adj.nnz() != self.adj.t().nnz()):
+        if self.adj.nnz() != self.adj.t().nnz():
             raise ImportError("The input adjacency matrix has to be symmetric.")
 
         # 获取 edge_index
@@ -99,15 +103,18 @@ class GraphAnnTorchDataset():
             # Add self loops to account for autocrine communication
             # Remove self loops in case there are already before adding new ones
             self.edge_index, _ = remove_self_loops(self.edge_index)
-            self.edge_index, _ = add_self_loops(self.edge_index,
-                                                num_nodes=self.x.size(0))
+            self.edge_index, _ = add_self_loops(
+                self.edge_index, num_nodes=self.x.size(0)
+            )
 
             # 确保添加的自环数目正确
             new_edge_index_shape = self.edge_index.shape[1]
             original_edge_index_shape = self.edge_weight.shape[0]
             num_self_loops = new_edge_index_shape - original_edge_index_shape
             # 创建自环边的权重，假设权重值为1
-            self_loops_weight = torch.ones((num_self_loops, 1), dtype=self.edge_weight.dtype)
+            self_loops_weight = torch.ones(
+                (num_self_loops, 1), dtype=self.edge_weight.dtype
+            )
 
             # 获取新增自环的边的数量
             # num_self_loops = self.x.size(0)
@@ -140,10 +147,10 @@ def sparse_mx_to_sparse_tensor(sparse_mx: csr_matrix) -> SparseTensor:
     """
     sparse_mx = sparse_mx.tocoo().astype(np.float32)
     indices = torch.from_numpy(
-        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
+        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64)
+    )
     values = torch.from_numpy(sparse_mx.data)
     shape = torch.Size(sparse_mx.shape)
     torch_sparse_coo_tensor = torch.sparse.FloatTensor(indices, values, shape)
-    sparse_tensor = SparseTensor.from_torch_sparse_coo_tensor(
-        torch_sparse_coo_tensor)
+    sparse_tensor = SparseTensor.from_torch_sparse_coo_tensor(torch_sparse_coo_tensor)
     return sparse_tensor

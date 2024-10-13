@@ -7,17 +7,15 @@ from ._utils import (
     svd_embedding,
     tfidf,
     GeneScores,
-    gene_scores
+    gene_scores,
 )
 
-from ._graph import (
-    get_nearest_neighbors
-)
+from ._graph import get_nearest_neighbors
 
 from .preprocess_utils import (
     preprocessing_rna,
     preprocessing_atac,
     preprocessing_adt,
-    preprocessing # TODO
+    preprocessing,  # TODO
 )
 from .preprocess import DataProcess

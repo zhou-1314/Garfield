@@ -3,33 +3,35 @@ from mudata import MuData
 
 # read data
 from ..data.datareaders import concat_data
+
 # preprocessing
 from ..preprocessing.preprocess_utils import preprocessing
 
 
 def DataProcess(
-         adata_list,
-         profile,
-         data_type=None,
-         sub_data_type=None,
-         sample_col='batch',
-         genome=None,
-         weight=None,
-         graph_const_method=None,
-         use_gene_weight=True,
-         user_cache_path=None,
-         use_top_pcs=False,
-         used_hvg=True,
-         min_features=100,
-         min_cells=3,
-         keep_mt=False,
-         target_sum=1e4,
-         rna_n_top_features=3000,
-         atac_n_top_features=10000,
-         n_components=50,
-         n_neighbors=15,
-         metric='correlation',
-         svd_solver='arpack'):
+    adata_list,
+    profile,
+    data_type=None,
+    sub_data_type=None,
+    sample_col="batch",
+    genome=None,
+    weight=None,
+    graph_const_method=None,
+    use_gene_weight=True,
+    user_cache_path=None,
+    use_top_pcs=False,
+    used_hvg=True,
+    min_features=100,
+    min_cells=3,
+    keep_mt=False,
+    target_sum=1e4,
+    rna_n_top_features=3000,
+    atac_n_top_features=10000,
+    n_components=50,
+    n_neighbors=15,
+    metric="correlation",
+    svd_solver="arpack",
+):
     """
     Processes single or multi-modal data (e.g., RNA, ATAC, ADT, spatial) with optional preprocessing steps
     such as normalization, feature selection, and dimensionality reduction.
@@ -90,24 +92,28 @@ def DataProcess(
     adata = concat_data(
         adata_list,
         batch_categories=None,
-        join='inner',
+        join="inner",
         batch_key=sample_col,  # 'batch'
         index_unique=None,
-        save=None
+        save=None,
     )
     if isinstance(adata, AnnData):
         if adata.X.max() < 50:
-            print('Warning: adata.X may have already been normalized, adata.X must be `counts`, please check.')
+            print(
+                "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
+            )
         else:
-            adata.layers['counts'] = adata.X.copy()
+            adata.layers["counts"] = adata.X.copy()
     elif isinstance(adata, MuData):
-        if adata.mod['rna'].X.max() < 50:
-            print('Warning: adata.X may have already been normalized, adata.X must be `counts`, please check.')
+        if adata.mod["rna"].X.max() < 50:
+            print(
+                "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
+            )
         else:
-            adata.mod['rna'].layers['counts'] = adata.mod['rna'].X.copy()
+            adata.mod["rna"].layers["counts"] = adata.mod["rna"].X.copy()
 
     # RNA ATAC ADT
-    if profile in ['RNA', 'ATAC', 'ADT']:
+    if profile in ["RNA", "ATAC", "ADT"]:
 
         ## 预处理
         _, adata_hvg = preprocessing(
@@ -128,24 +134,26 @@ def DataProcess(
             batch_key=sample_col,
             metric=metric,
             svd_solver=svd_solver,
-            keep_mt=keep_mt
+            keep_mt=keep_mt,
         )
 
         return adata_hvg
 
     ### Paired multi-modal
-    elif profile == 'multi-modal':
+    elif profile == "multi-modal":
         if len(sub_data_type) == 2:
-            if sub_data_type[0] == 'rna' and sub_data_type[1] == 'atac':
-                rna_adata = adata.mod['rna'].copy()
-                atac_adata = adata.mod['atac'].copy()
+            if sub_data_type[0] == "rna" and sub_data_type[1] == "atac":
+                rna_adata = adata.mod["rna"].copy()
+                atac_adata = adata.mod["atac"].copy()
                 mdata = MuData({"rna": rna_adata, "atac": atac_adata})
-            elif sub_data_type[0] == 'rna' and sub_data_type[1] == 'adt':
-                rna_adata = adata.mod['rna'].copy()
-                adt_adata = adata.mod['adt'].copy()
+            elif sub_data_type[0] == "rna" and sub_data_type[1] == "adt":
+                rna_adata = adata.mod["rna"].copy()
+                adt_adata = adata.mod["adt"].copy()
                 mdata = MuData({"rna": rna_adata, "adt": adt_adata})
         else:
-            ValueError('The length of sub_data_type must be 2, such as: ["rna", "atac"] or ["rna", "adt"].')
+            ValueError(
+                'The length of sub_data_type must be 2, such as: ["rna", "atac"] or ["rna", "adt"].'
+            )
         del adata
 
         ## 预处理
@@ -170,13 +178,13 @@ def DataProcess(
             batch_key=sample_col,
             metric=metric,
             svd_solver=svd_solver,
-            keep_mt=keep_mt
+            keep_mt=keep_mt,
         )
 
         return merged_adata
 
     ### spatial single- or multi-modal
-    elif profile == 'spatial':
+    elif profile == "spatial":
         ## 预处理
         merged_adata = preprocessing(
             adata,
@@ -199,7 +207,7 @@ def DataProcess(
             batch_key=sample_col,
             metric=metric,
             svd_solver=svd_solver,
-            keep_mt=keep_mt
+            keep_mt=keep_mt,
         )
 
         return merged_adata

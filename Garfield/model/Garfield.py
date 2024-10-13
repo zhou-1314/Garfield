@@ -16,6 +16,7 @@ from ..nn.encoders import GATEncoder, GCNEncoder
 from ..modules.GNNModelVAE import GNNModelVAE
 from ..trainer.trainer import GarfieldTrainer
 
+
 class Garfield(torch.nn.Module, BaseModelMixin):
     """
     Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding
@@ -165,6 +166,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
     verbose : bool
         Whether to display detailed logs during training.
     """
+
     def __init__(self, gf_params):
         super(Garfield, self).__init__()
         if gf_params is None:
@@ -230,8 +232,12 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.include_edge_recon_loss_ = self.args.include_edge_recon_loss
         self.include_gene_expr_recon_loss_ = self.args.include_gene_expr_recon_loss
         self.used_mmd_ = self.args.used_mmd
-        self.lambda_latent_contrastive_instanceloss_ = self.args.lambda_latent_contrastive_instanceloss
-        self.lambda_latent_contrastive_clusterloss_ = self.args.lambda_latent_contrastive_clusterloss
+        self.lambda_latent_contrastive_instanceloss_ = (
+            self.args.lambda_latent_contrastive_instanceloss
+        )
+        self.lambda_latent_contrastive_clusterloss_ = (
+            self.args.lambda_latent_contrastive_clusterloss
+        )
         self.lambda_gene_expr_recon_ = self.args.lambda_gene_expr_recon
         self.lambda_latent_adj_recon_loss_ = self.args.lambda_latent_adj_recon_loss
         self.lambda_edge_recon_ = self.args.lambda_edge_recon
@@ -284,19 +290,19 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             n_components=self.n_components_,
             n_neighbors=self.n_neighbors_,
             metric=self.metric_,
-            svd_solver=self.svd_solver_
+            svd_solver=self.svd_solver_,
         )
         # set up model
         if not self.used_pca_feat_:
             self.num_features_ = self.adata.n_vars
         else:
-            self.num_features_ = self.adata.obsm['feat'].shape[1]
+            self.num_features_ = self.adata.obsm["feat"].shape[1]
 
         if self.sample_col_ is not None:
             try:
                 self.n_domain_ = len(self.adata.obs[self.sample_col_].unique())
             except KeyError:
-                self.n_domain_ = len(self.adata.obs['rna:' + self.sample_col_].unique())
+                self.n_domain_ = len(self.adata.obs["rna:" + self.sample_col_].unique())
         else:
             self.n_domain_ = None
         self.setup_layers()
@@ -307,7 +313,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         """
         ## 选择 encoder
         ## 设定参数
-        if self.conv_type_ in ['GAT', 'GATv2Conv']:
+        if self.conv_type_ in ["GAT", "GATv2Conv"]:
             encoder = GATEncoder(
                 in_channels=self.num_features_,
                 hidden_dims=self.hidden_dims_,
@@ -322,7 +328,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
                 drop_edge_rate=self.drop_edge_rate_,
                 used_edge_weight=self.used_edge_weight_,
                 svd_q=self.svd_q_,
-                used_DSBN=self.used_DSBN_
+                used_DSBN=self.used_DSBN_,
             )
         else:
             encoder = GCNEncoder(
@@ -336,7 +342,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
                 drop_edge_rate=self.drop_edge_rate_,
                 used_edge_weight=self.used_edge_weight_,
                 svd_q=self.svd_q_,
-                used_DSBN=self.used_DSBN_
+                used_DSBN=self.used_DSBN_,
             )
 
         ## GCNModelVAE
@@ -356,7 +362,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             cluster_num=self.cluster_num_,
             include_edge_recon_loss=self.include_edge_recon_loss_,
             include_gene_expr_recon_loss=self.include_gene_expr_recon_loss_,
-            used_mmd=self.used_mmd_
+            used_mmd=self.used_mmd_,
         )
         self.is_trained_ = False
 
@@ -387,7 +393,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             device_id=self.device_id_,
             verbose=self.verbose_,
             seed=self.seed_,
-            **trainer_kwargs)
+            **trainer_kwargs,
+        )
 
         self.trainer.train(
             n_epochs=self.n_epochs_,
@@ -400,7 +407,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             lambda_latent_adj_recon_loss=self.lambda_latent_adj_recon_loss_,
             lambda_latent_contrastive_instanceloss=self.lambda_latent_contrastive_instanceloss_,
             lambda_latent_contrastive_clusterloss=self.lambda_latent_contrastive_clusterloss_,
-            lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_
+            lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_,
         )
 
         self.node_batch_size_ = self.trainer.node_batch_size_
@@ -412,17 +419,17 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             adata=self.adata,
             adj_key=self.adj_key_,
             return_mu_std=True,
-            node_batch_size=self.node_batch_size_
+            node_batch_size=self.node_batch_size_,
         )
 
     # embedding
     def get_latent_representation(
-            self,
-            adata: Optional[AnnData] = None,
-            adj_key: str = "connectivities",
-            return_mu_std: bool = False,
-            node_batch_size: int = 64,
-            dtype: type = np.float64,
+        self,
+        adata: Optional[AnnData] = None,
+        adj_key: str = "connectivities",
+        return_mu_std: bool = False,
+        node_batch_size: int = 64,
+        dtype: type = np.float64,
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """
         Get the latent representation / gene program scores from a trained model.
@@ -465,10 +472,11 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             adata=adata,
             adj_key=adj_key,
             used_pca_feat=self.used_pca_feat_,
-            edge_val_ratio=0.,
-            edge_test_ratio=0.,
-            node_val_ratio=0.,
-            node_test_ratio=0.)
+            edge_val_ratio=0.0,
+            edge_test_ratio=0.0,
+            node_val_ratio=0.0,
+            node_test_ratio=0.0,
+        )
         node_masked_data = data_dict["node_masked_data"]
         loader_dict = initialize_dataloaders(
             node_masked_data=node_masked_data,
@@ -476,13 +484,18 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             edge_val_data=None,
             edge_batch_size=None,
             node_batch_size=node_batch_size,
-            shuffle=False)
+            shuffle=False,
+        )
         node_loader = loader_dict["node_train_loader"]
 
         # Initialize latent vectors
         if return_mu_std:
-            mu = np.empty(shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype)
-            std = np.empty(shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype)
+            mu = np.empty(
+                shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype
+            )
+            std = np.empty(
+                shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype
+            )
         else:
             z = np.empty(shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype)
 
@@ -496,123 +509,132 @@ class Garfield(torch.nn.Module, BaseModelMixin):
                 mu_batch, std_batch = self.model.get_latent_representation(
                     node_batch=node_batch,
                     augment_type=self.augment_type_,
-                    return_mu_std=True)
+                    return_mu_std=True,
+                )
                 mu[n_obs_before_batch:n_obs_after_batch, :] = (
-                    mu_batch.detach().cpu().numpy())
+                    mu_batch.detach().cpu().numpy()
+                )
                 std[n_obs_before_batch:n_obs_after_batch, :] = (
-                    std_batch.detach().cpu().numpy())
+                    std_batch.detach().cpu().numpy()
+                )
             else:
                 z_batch = self.model.get_latent_representation(
                     node_batch=node_batch,
                     augment_type=self.augment_type_,
-                    return_mu_std=False)
+                    return_mu_std=False,
+                )
                 z[n_obs_before_batch:n_obs_after_batch, :] = (
-                    z_batch.detach().cpu().numpy())
+                    z_batch.detach().cpu().numpy()
+                )
         if return_mu_std:
             return mu, std
         else:
             return z
 
     # Loss curve
-    def plot_loss_curves(self,
-                         title="Losses Curve"
-                         ):
+    def plot_loss_curves(self, title="Losses Curve"):
         return self.trainer.plot_loss_curves(title=title)
 
     @classmethod
     def _get_init_params_from_dict(cls, dct):
         init_params = {
             # Preprocessing options
-            'adata_list': dct['adata_list_'],
-            'profile': dct['profile_'],
-            'data_type': dct['data_type_'],
-            'sub_data_type': dct['sub_data_type_'],
-            'sample_col': dct['sample_col_'],
-            'weight': dct['weight_'],
-            'graph_const_method': dct['graph_const_method_'],
-            'genome': dct['genome_'],
-            'use_gene_weight': dct['use_gene_weight_'],
-            'user_cache_path': dct['user_cache_path_'],
-            'use_top_pcs': dct['use_top_pcs_'],
-            'used_hvg': dct['used_hvg_'],
-            'min_features': dct['min_features_'],
-            'min_cells': dct['min_cells_'],
-            'keep_mt': dct['keep_mt_'],
-            'target_sum': dct['target_sum_'],
-            'rna_n_top_features': dct['rna_n_top_features_'],
-            'atac_n_top_features': dct['atac_n_top_features_'],
-            'n_components': dct['n_components_'],
-            'n_neighbors': dct['n_neighbors_'],
-            'metric': dct['metric_'],
-            'svd_solver': dct['svd_solver_'],
-            'used_pca_feat': dct['used_pca_feat_'],
-            'adj_key': dct['adj_key_'],
+            "adata_list": dct["adata_list_"],
+            "profile": dct["profile_"],
+            "data_type": dct["data_type_"],
+            "sub_data_type": dct["sub_data_type_"],
+            "sample_col": dct["sample_col_"],
+            "weight": dct["weight_"],
+            "graph_const_method": dct["graph_const_method_"],
+            "genome": dct["genome_"],
+            "use_gene_weight": dct["use_gene_weight_"],
+            "user_cache_path": dct["user_cache_path_"],
+            "use_top_pcs": dct["use_top_pcs_"],
+            "used_hvg": dct["used_hvg_"],
+            "min_features": dct["min_features_"],
+            "min_cells": dct["min_cells_"],
+            "keep_mt": dct["keep_mt_"],
+            "target_sum": dct["target_sum_"],
+            "rna_n_top_features": dct["rna_n_top_features_"],
+            "atac_n_top_features": dct["atac_n_top_features_"],
+            "n_components": dct["n_components_"],
+            "n_neighbors": dct["n_neighbors_"],
+            "metric": dct["metric_"],
+            "svd_solver": dct["svd_solver_"],
+            "used_pca_feat": dct["used_pca_feat_"],
+            "adj_key": dct["adj_key_"],
             # data split parameters
-            'edge_val_ratio': dct['edge_val_ratio_'],
-            'edge_test_ratio': dct['edge_test_ratio_'],
-            'node_val_ratio': dct['node_val_ratio_'],
-            'node_test_ratio': dct['node_test_ratio_'],
+            "edge_val_ratio": dct["edge_val_ratio_"],
+            "edge_test_ratio": dct["edge_test_ratio_"],
+            "node_val_ratio": dct["node_val_ratio_"],
+            "node_test_ratio": dct["node_test_ratio_"],
             # model parameters
-            'augment_type': dct['augment_type_'],
-            'svd_q': dct['svd_q_'],
-            'use_FCencoder': dct['use_FCencoder_'],
-            'gnn_layer': dct['gnn_layer_'],
-            'conv_type': dct['conv_type_'],
-            'hidden_dims': dct['hidden_dims_'],
-            'bottle_neck_neurons': dct['bottle_neck_neurons_'],
-            'cluster_num': dct['cluster_num_'],
-            'num_heads': dct['num_heads_'],
-            'dropout': dct['dropout_'],
-            'concat': dct['concat_'],
-            'drop_feature_rate': dct['drop_feature_rate_'],
-            'drop_edge_rate': dct['drop_edge_rate_'],
-            'used_edge_weight': dct['used_edge_weight_'],
-            'used_DSBN': dct['used_DSBN_'],
-            'used_mmd': dct['used_mmd_'],
+            "augment_type": dct["augment_type_"],
+            "svd_q": dct["svd_q_"],
+            "use_FCencoder": dct["use_FCencoder_"],
+            "gnn_layer": dct["gnn_layer_"],
+            "conv_type": dct["conv_type_"],
+            "hidden_dims": dct["hidden_dims_"],
+            "bottle_neck_neurons": dct["bottle_neck_neurons_"],
+            "cluster_num": dct["cluster_num_"],
+            "num_heads": dct["num_heads_"],
+            "dropout": dct["dropout_"],
+            "concat": dct["concat_"],
+            "drop_feature_rate": dct["drop_feature_rate_"],
+            "drop_edge_rate": dct["drop_edge_rate_"],
+            "used_edge_weight": dct["used_edge_weight_"],
+            "used_DSBN": dct["used_DSBN_"],
+            "used_mmd": dct["used_mmd_"],
             # data loader parameters
-            'num_neighbors': dct['num_neighbors_'],
-            'loaders_n_hops': dct['loaders_n_hops_'],
-            'edge_batch_size': dct['edge_batch_size_'],
-            'node_batch_size': dct['node_batch_size_'],
+            "num_neighbors": dct["num_neighbors_"],
+            "loaders_n_hops": dct["loaders_n_hops_"],
+            "edge_batch_size": dct["edge_batch_size_"],
+            "node_batch_size": dct["node_batch_size_"],
             # loss parameters
-            'include_edge_recon_loss': dct['include_edge_recon_loss_'],
-            'include_gene_expr_recon_loss': dct['include_gene_expr_recon_loss_'],
-            'lambda_latent_contrastive_instanceloss': dct['lambda_latent_contrastive_instanceloss_'],
-            'lambda_latent_contrastive_clusterloss': dct['lambda_latent_contrastive_clusterloss_'],
-            'lambda_gene_expr_recon': dct['lambda_gene_expr_recon_'],
-            'lambda_latent_adj_recon_loss': dct['lambda_latent_adj_recon_loss_'],
-            'lambda_edge_recon': dct['lambda_edge_recon_'],
-            'lambda_omics_recon_mmd_loss': dct['lambda_omics_recon_mmd_loss_'],
+            "include_edge_recon_loss": dct["include_edge_recon_loss_"],
+            "include_gene_expr_recon_loss": dct["include_gene_expr_recon_loss_"],
+            "lambda_latent_contrastive_instanceloss": dct[
+                "lambda_latent_contrastive_instanceloss_"
+            ],
+            "lambda_latent_contrastive_clusterloss": dct[
+                "lambda_latent_contrastive_clusterloss_"
+            ],
+            "lambda_gene_expr_recon": dct["lambda_gene_expr_recon_"],
+            "lambda_latent_adj_recon_loss": dct["lambda_latent_adj_recon_loss_"],
+            "lambda_edge_recon": dct["lambda_edge_recon_"],
+            "lambda_omics_recon_mmd_loss": dct["lambda_omics_recon_mmd_loss_"],
             # train parameters
-            'n_epochs': dct['n_epochs_'],
-            'n_epochs_no_edge_recon': dct['n_epochs_no_edge_recon_'],
-            'learning_rate': dct['learning_rate_'],
-            'weight_decay': dct['weight_decay_'],
-            'gradient_clipping': dct['gradient_clipping_'],
+            "n_epochs": dct["n_epochs_"],
+            "n_epochs_no_edge_recon": dct["n_epochs_no_edge_recon_"],
+            "learning_rate": dct["learning_rate_"],
+            "weight_decay": dct["weight_decay_"],
+            "gradient_clipping": dct["gradient_clipping_"],
             # other parameters
-            'latent_key': dct['latent_key_'],
-            'reload_best_model': dct['reload_best_model_'],
-            'use_early_stopping': dct['use_early_stopping_'],
-            'early_stopping_kwargs': dct['early_stopping_kwargs_'],
-            'monitor': dct['monitor_'],
-            'device_id': dct['device_id_'],
-            'seed': dct['seed_'],
-            'verbose': dct['verbose_'],
+            "latent_key": dct["latent_key_"],
+            "reload_best_model": dct["reload_best_model_"],
+            "use_early_stopping": dct["use_early_stopping_"],
+            "early_stopping_kwargs": dct["early_stopping_kwargs_"],
+            "monitor": dct["monitor_"],
+            "device_id": dct["device_id_"],
+            "seed": dct["seed_"],
+            "verbose": dct["verbose_"],
         }
 
         return init_params
 
-    def label_transfer(self,
-                       ref_adata,
-                       ref_adata_emb,
-                       query_adata,
-                       query_adata_emb,
-                       ref_adata_obs,
-                       label_keys,
-                       n_neighbors=50,
-                       threshold=1,
-                       pred_unknown=False,
-                       mode="package"):
+    def label_transfer(
+        self,
+        ref_adata,
+        ref_adata_emb,
+        query_adata,
+        query_adata_emb,
+        ref_adata_obs,
+        label_keys,
+        n_neighbors=50,
+        threshold=1,
+        pred_unknown=False,
+        mode="package",
+    ):
         knn_transformer = weighted_knn_trainer(
             train_adata=ref_adata,
             train_adata_emb=ref_adata_emb,  # location of our joint embedding
@@ -627,14 +649,16 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             ref_adata_obs=ref_adata_obs,
             threshold=threshold,
             pred_unknown=pred_unknown,
-            mode=mode
+            mode=mode,
         )
         # 定义列名的映射
         cols = ref_adata_obs.columns[ref_adata_obs.columns.str.startswith(label_keys)]
         if pred_unknown:
             rename_mapping_labels = {col: f"transferred_{col}_filtered" for col in cols}
         else:
-            rename_mapping_labels = {col: f"transferred_{col}_unfiltered" for col in cols}
+            rename_mapping_labels = {
+                col: f"transferred_{col}_unfiltered" for col in cols
+            }
 
         # 定义 uncertainty 映射
         rename_mapping_uncert = {col: f"transferred_{col}_uncert" for col in cols}
@@ -649,9 +673,6 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             uncert.rename(columns=rename_mapping_uncert)
         )
         ## 去除 query_adata obs 中 NA 的列
-        query_adata.obs = query_adata.obs.dropna(axis=1, how='all')
+        query_adata.obs = query_adata.obs.dropna(axis=1, how="all")
 
         return query_adata
-
-
-

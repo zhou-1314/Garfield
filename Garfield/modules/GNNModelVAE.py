@@ -7,13 +7,20 @@ from torch import Tensor
 from torch.nn.functional import normalize
 from torch_geometric.data import Data
 from torch_geometric.utils import to_dense_adj
-from torch_geometric.utils import (negative_sampling, remove_self_loops, add_self_loops)
+from torch_geometric.utils import negative_sampling, remove_self_loops, add_self_loops
 from torch_geometric.nn import GAE, InnerProductDecoder
 
 from .utils import extract_subgraph, to_float_tensor
 from ..nn.decoders import GATDecoder, GCNDecoder, CosineSimGraphDecoder
-from .loss import compute_omics_recon_mse_loss, compute_omics_recon_mmd_loss, compute_edge_recon_loss, \
-    compute_kl_reg_loss, compute_contrastive_instanceloss, compute_contrastive_clusterloss, compute_adj_recon_loss
+from .loss import (
+    compute_omics_recon_mse_loss,
+    compute_omics_recon_mmd_loss,
+    compute_edge_recon_loss,
+    compute_kl_reg_loss,
+    compute_contrastive_instanceloss,
+    compute_contrastive_clusterloss,
+    compute_adj_recon_loss,
+)
 
 # Based on VGAE class in PyTorch Geometric
 class GNNModelVAE(GAE):
@@ -55,11 +62,26 @@ class GNNModelVAE(GAE):
     used_mmd : bool, optional
         Whether to use MMD (Maximum Mean Discrepancy) loss for domain adaptation. Default is False.
     """
-    def __init__(self, encoder, bottle_neck_neurons, hidden_dims, feature_dim,
-                 num_heads, dropout, concat, n_domain, used_edge_weight, used_DSBN,
-                 conv_type, gnn_layer=2, cluster_num=20, include_edge_recon_loss=True,
-                 include_gene_expr_recon_loss=True, used_mmd=False
-                 ):
+
+    def __init__(
+        self,
+        encoder,
+        bottle_neck_neurons,
+        hidden_dims,
+        feature_dim,
+        num_heads,
+        dropout,
+        concat,
+        n_domain,
+        used_edge_weight,
+        used_DSBN,
+        conv_type,
+        gnn_layer=2,
+        cluster_num=20,
+        include_edge_recon_loss=True,
+        include_gene_expr_recon_loss=True,
+        used_mmd=False,
+    ):
         super(GNNModelVAE, self).__init__(encoder)
         # model configurations
         self.encoder = encoder
@@ -77,11 +99,17 @@ class GNNModelVAE(GAE):
         self.used_mmd = used_mmd
         self.conv_type = conv_type
         self.cluster_num = cluster_num
-        assert self.conv_type in ['GAT', 'GATv2Conv', 'GCN'], 'Convolution must be "GCN", "GAT" or "GATv2Conv".'
+        assert self.conv_type in [
+            "GAT",
+            "GATv2Conv",
+            "GCN",
+        ], 'Convolution must be "GCN", "GAT" or "GATv2Conv".'
         self.gnn_layer = gnn_layer
 
         # 使用 Xavier 初始化权重
-        self.eps_weight = nn.Parameter(nn.init.xavier_uniform_(torch.empty(self.latent, self.latent)))
+        self.eps_weight = nn.Parameter(
+            nn.init.xavier_uniform_(torch.empty(self.latent, self.latent))
+        )
         self.eps_bias = nn.Parameter(torch.zeros(self.latent))
         self.instance_projector = nn.Sequential(
             nn.Linear(self.latent, self.latent),
@@ -94,16 +122,15 @@ class GNNModelVAE(GAE):
             nn.LayerNorm(self.latent, elementwise_affine=False),
             nn.ReLU(),
             nn.Linear(self.latent, self.cluster_num),
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=1),
         )
         # Initialize graph decoder module
-        self.graph_decoder = CosineSimGraphDecoder(
-            dropout_rate=self.dropout)
+        self.graph_decoder = CosineSimGraphDecoder(dropout_rate=self.dropout)
         # Initialize adj decoder module
         self.adj_decoder = InnerProductDecoder()
 
         ## 重构表达谱
-        if self.conv_type in ['GAT', 'GATv2Conv']:
+        if self.conv_type in ["GAT", "GATv2Conv"]:
             self.GAT_decoder = GATDecoder(
                 in_channels=self.latent,
                 hidden_dims=self.hidden_dims,
@@ -114,9 +141,9 @@ class GNNModelVAE(GAE):
                 concat=self.concat,
                 num_domains=self.n_domain,  # DSBN
                 used_edge_weight=self.used_edge_weight,
-                used_DSBN=self.used_DSBN
+                used_DSBN=self.used_DSBN,
             )
-        elif self.conv_type == 'GCN':
+        elif self.conv_type == "GCN":
             self.GCN_decoder = GCNDecoder(
                 in_channels=self.latent,
                 hidden_dims=self.hidden_dims,
@@ -124,7 +151,7 @@ class GNNModelVAE(GAE):
                 dropout=self.dropout,
                 num_domains=self.n_domain,  # DSBN
                 used_edge_weight=self.used_edge_weight,
-                used_DSBN=self.used_DSBN
+                used_DSBN=self.used_DSBN,
             )
         else:
             raise NotImplementedError("Unknown GNN-Operator.")
@@ -147,7 +174,6 @@ class GNNModelVAE(GAE):
         torch.Tensor
             A reparameterized latent vector sampled from the distribution (shape: [batch_size, latent_dim]).
         """
-
 
         if self.training:
             if eps is not None:
@@ -195,8 +221,8 @@ class GNNModelVAE(GAE):
             for _ in range(self.gnn_layer):
                 data_batch.x = to_float_tensor(data_batch.x)
                 encoder_outputs = self.encoder(data_batch, decoder_type, augment_type)
-                mu1 = encoder_outputs[0] #[batch_idx, :]
-                mu2 = encoder_outputs[2] #[batch_idx, :]
+                mu1 = encoder_outputs[0]  # [batch_idx, :]
+                mu2 = encoder_outputs[2]  # [batch_idx, :]
                 all_mu1.append(mu1)
                 all_mu2.append(mu2)
 
@@ -228,7 +254,7 @@ class GNNModelVAE(GAE):
             output = {}
             # with torch.no_grad(): ## TODO
             # data_batch = extract_subgraph(data_batch, batch_idx)
-            if self.conv_type in ['GAT', 'GATv2Conv']:
+            if self.conv_type in ["GAT", "GATv2Conv"]:
                 recon_features = self.GAT_decoder(z1, data_batch)
             else:
                 recon_features = self.GCN_decoder(z1, data_batch)
@@ -252,8 +278,9 @@ class GNNModelVAE(GAE):
             # negative edges of size ´edge_batch_size´ respectively. Each edge
             # has a source and target node, leading to a dim of ´batch_idx´ of
             # 4 * ´edge_batch_size´
-            batch_idx = torch.cat((data_batch.edge_label_index[0],
-                                   data_batch.edge_label_index[1]), 0)
+            batch_idx = torch.cat(
+                (data_batch.edge_label_index[0], data_batch.edge_label_index[1]), 0
+            )
 
             all_mu1 = []
             for _ in range(self.gnn_layer):
@@ -279,17 +306,17 @@ class GNNModelVAE(GAE):
             output["logstd"] = logstd1
             return output
 
-
-
-    def loss(self,
-             edge_model_output: dict,
-             node_model_output: dict,
-             lambda_edge_recon,
-             lambda_gene_expr_recon,
-             lambda_latent_adj_recon_loss,
-             lambda_latent_contrastive_instanceloss,
-             lambda_latent_contrastive_clusterloss,
-             lambda_omics_recon_mmd_loss) -> dict:
+    def loss(
+        self,
+        edge_model_output: dict,
+        node_model_output: dict,
+        lambda_edge_recon,
+        lambda_gene_expr_recon,
+        lambda_latent_adj_recon_loss,
+        lambda_latent_contrastive_instanceloss,
+        lambda_latent_contrastive_clusterloss,
+        lambda_omics_recon_mmd_loss,
+    ) -> dict:
         """
         Computes the total loss for the model by combining different loss components such as KL divergence, edge reconstruction loss, gene expression reconstruction loss, and contrastive losses.
 
@@ -329,57 +356,88 @@ class GNNModelVAE(GAE):
 
         # 1. Compute Kullback-Leibler divergence loss for edge and node batch
         loss_dict["kl_reg_loss"] = compute_kl_reg_loss(
-            mu=node_model_output["mu"],
-            logstd=node_model_output["logstd"]) # * 1 / node_model_output["mu"].size(0)
+            mu=node_model_output["mu"], logstd=node_model_output["logstd"]
+        )  # * 1 / node_model_output["mu"].size(0)
         loss_dict["kl_reg_loss"] += compute_kl_reg_loss(
-            mu=edge_model_output["mu"],
-            logstd=edge_model_output["logstd"]) # * 1 / edge_model_output["mu"].size(0)
+            mu=edge_model_output["mu"], logstd=edge_model_output["logstd"]
+        )  # * 1 / edge_model_output["mu"].size(0)
 
         # 2. Compute edge reconstruction binary cross entropy loss for edge batch
         loss_dict["edge_recon_loss"] = (
-                lambda_edge_recon * compute_edge_recon_loss(
-            edge_recon_logits=edge_model_output["edge_recon_logits"],
-            edge_recon_labels=edge_model_output["edge_recon_labels"])) * edge_model_output['mu'].size(0)/10
+            (
+                lambda_edge_recon
+                * compute_edge_recon_loss(
+                    edge_recon_logits=edge_model_output["edge_recon_logits"],
+                    edge_recon_labels=edge_model_output["edge_recon_labels"],
+                )
+            )
+            * edge_model_output["mu"].size(0)
+            / 10
+        )
 
         # 3. Compute gene expression reconstruction with MSE loss for node batch
         loss_dict["gene_expr_recon_loss"] = (
-                lambda_gene_expr_recon *
-                compute_omics_recon_mse_loss(
-                    recon_x=node_model_output["recon_features"],
-                    x=node_model_output["truth_x"])) * 20000 # node_model_output['truth_x'].size(-1)
+            lambda_gene_expr_recon
+            * compute_omics_recon_mse_loss(
+                recon_x=node_model_output["recon_features"],
+                x=node_model_output["truth_x"],
+            )
+        ) * 20000  # node_model_output['truth_x'].size(-1)
 
         # 4. compute reconstructed adj loss through node feedforward
-        loss_dict["lambda_latent_adj_recon_loss"] = compute_adj_recon_loss(node_model_output['pos_adj'],
-                                                                           node_model_output['neg_adj'],
-                                                                           lambda_latent_adj_recon_loss) * 100 # * node_model_output['truth_x'].size(-1)
+        loss_dict["lambda_latent_adj_recon_loss"] = (
+            compute_adj_recon_loss(
+                node_model_output["pos_adj"],
+                node_model_output["neg_adj"],
+                lambda_latent_adj_recon_loss,
+            )
+            * 100
+        )  # * node_model_output['truth_x'].size(-1)
 
         # 5. compute Contrastive instance losses
-        loss_dict["lambda_latent_contrastive_instanceloss"] = compute_contrastive_instanceloss(node_model_output['z_1'],
-                                                                                node_model_output['z_2'],
-                                                                                lambda_latent_contrastive_instanceloss)
+        loss_dict[
+            "lambda_latent_contrastive_instanceloss"
+        ] = compute_contrastive_instanceloss(
+            node_model_output["z_1"],
+            node_model_output["z_2"],
+            lambda_latent_contrastive_instanceloss,
+        )
         # 6. compute Contrastive cluster losses
-        loss_dict["lambda_latent_contrastive_clusterloss"] = compute_contrastive_clusterloss(node_model_output['c_1'],
-                                                                                node_model_output['c_2'],
-                                                                                self.cluster_num,
-                                                                                lambda_latent_contrastive_clusterloss)
+        loss_dict[
+            "lambda_latent_contrastive_clusterloss"
+        ] = compute_contrastive_clusterloss(
+            node_model_output["c_1"],
+            node_model_output["c_2"],
+            self.cluster_num,
+            lambda_latent_contrastive_clusterloss,
+        )
 
         # 7. compute MMD loss
         if self.used_mmd:
-            cell_batch = node_model_output['truth_y']
+            cell_batch = node_model_output["truth_y"]
             device = cell_batch.device
             cell_batch = cell_batch.detach().cpu()
             unique_groups, group_indices = np.unique(cell_batch, return_inverse=True)
-            grouped_z_cell = {group: node_model_output['z'][group_indices == i] for i, group in enumerate(unique_groups)}
+            grouped_z_cell = {
+                group: node_model_output["z"][group_indices == i]
+                for i, group in enumerate(unique_groups)
+            }
             group_labels = list(unique_groups)
             num_groups = len(group_labels)
 
-            loss_dict["gene_expr_mmd_loss"] = torch.tensor(0, dtype=torch.float).to(device)
+            loss_dict["gene_expr_mmd_loss"] = torch.tensor(0, dtype=torch.float).to(
+                device
+            )
             for i in range(num_groups):
                 for j in range(i + 1, num_groups):
                     z_i = grouped_z_cell[group_labels[i]]
                     z_j = grouped_z_cell[group_labels[j]]
-                    mmd_loss_tmp = compute_omics_recon_mmd_loss(z_i, z_j) * node_model_output['z'].size(0)
-                    loss_dict["gene_expr_mmd_loss"] += mmd_loss_tmp * lambda_omics_recon_mmd_loss
+                    mmd_loss_tmp = compute_omics_recon_mmd_loss(
+                        z_i, z_j
+                    ) * node_model_output["z"].size(0)
+                    loss_dict["gene_expr_mmd_loss"] += (
+                        mmd_loss_tmp * lambda_omics_recon_mmd_loss
+                    )
 
         # Compute optimization loss used for backpropagation as well as global
         # loss used for early stopping of model training and best model saving
@@ -395,20 +453,28 @@ class GNNModelVAE(GAE):
             loss_dict["optim_loss"] += loss_dict["gene_expr_recon_loss"]
             loss_dict["global_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
             loss_dict["optim_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
-            loss_dict["global_loss"] += loss_dict["lambda_latent_contrastive_instanceloss"]
-            loss_dict["optim_loss"] += loss_dict["lambda_latent_contrastive_instanceloss"]
-            loss_dict["global_loss"] += loss_dict["lambda_latent_contrastive_clusterloss"]
-            loss_dict["optim_loss"] += loss_dict["lambda_latent_contrastive_clusterloss"]
+            loss_dict["global_loss"] += loss_dict[
+                "lambda_latent_contrastive_instanceloss"
+            ]
+            loss_dict["optim_loss"] += loss_dict[
+                "lambda_latent_contrastive_instanceloss"
+            ]
+            loss_dict["global_loss"] += loss_dict[
+                "lambda_latent_contrastive_clusterloss"
+            ]
+            loss_dict["optim_loss"] += loss_dict[
+                "lambda_latent_contrastive_clusterloss"
+            ]
             if self.used_mmd:
                 loss_dict["global_loss"] += loss_dict["gene_expr_mmd_loss"]
                 loss_dict["optim_loss"] += loss_dict["gene_expr_mmd_loss"]
         return loss_dict
 
     def get_latent_representation(
-            self,
-            node_batch: Data,
-            augment_type: Literal['svd', 'dropout'] = 'svd',
-            return_mu_std: bool = False
+        self,
+        node_batch: Data,
+        augment_type: Literal["svd", "dropout"] = "svd",
+        return_mu_std: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Encodes the input data into latent space, either returning the latent features (z) or
@@ -432,11 +498,11 @@ class GNNModelVAE(GAE):
         """
 
         # Get latent distribution parameters
-        encoder_outputs = self.encoder(node_batch,
-                                       augment_type=augment_type,
-                                       decoder_type='omics') # z_mean1, z_log_std1, z_mean2, z_log_std2
-        mu = encoder_outputs[0][:node_batch.batch_size, :]
-        logstd = encoder_outputs[1][:node_batch.batch_size, :]
+        encoder_outputs = self.encoder(
+            node_batch, augment_type=augment_type, decoder_type="omics"
+        )  # z_mean1, z_log_std1, z_mean2, z_log_std2
+        mu = encoder_outputs[0][: node_batch.batch_size, :]
+        logstd = encoder_outputs[1][: node_batch.batch_size, :]
 
         if return_mu_std:
             std = torch.exp(logstd)

@@ -5,14 +5,14 @@
 
 .. autoclass:: GNNModelVAE
 
-   
+
    .. automethod:: __init__
 
-   
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~GNNModelVAE.__init__
       ~GNNModelVAE.add_module
       ~GNNModelVAE.apply
@@ -68,18 +68,16 @@
       ~GNNModelVAE.type
       ~GNNModelVAE.xpu
       ~GNNModelVAE.zero_grad
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~GNNModelVAE.T_destination
       ~GNNModelVAE.call_super_init
       ~GNNModelVAE.dump_patches
       ~GNNModelVAE.training
-   
-   

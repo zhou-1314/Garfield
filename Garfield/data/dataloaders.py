@@ -8,16 +8,18 @@ from torch_geometric.data import Data
 from torch_geometric.loader import LinkNeighborLoader, NeighborLoader
 
 
-def initialize_dataloaders(node_masked_data: Data,
-                           edge_train_data: Optional[Data] = None,
-                           edge_val_data: Optional[Data] = None,
-                           edge_batch_size: Optional[int] = 64,
-                           node_batch_size: int = 64,
-                           n_direct_neighbors: int = -1,
-                           n_hops: int = 1,
-                           shuffle: bool = True,
-                           edges_directed: bool = False,
-                           neg_edge_sampling_ratio: float = 1.) -> dict:
+def initialize_dataloaders(
+    node_masked_data: Data,
+    edge_train_data: Optional[Data] = None,
+    edge_val_data: Optional[Data] = None,
+    edge_batch_size: Optional[int] = 64,
+    node_batch_size: int = 64,
+    n_direct_neighbors: int = -1,
+    n_hops: int = 1,
+    shuffle: bool = True,
+    edges_directed: bool = False,
+    neg_edge_sampling_ratio: float = 1.0,
+) -> dict:
     """
     Initialize edge-level and node-level training and validation dataloaders.
 
@@ -67,7 +69,8 @@ def initialize_dataloaders(node_masked_data: Data,
         batch_size=node_batch_size,
         directed=False,
         shuffle=shuffle,
-        input_nodes=node_masked_data.train_mask)
+        input_nodes=node_masked_data.train_mask,
+    )
     if node_masked_data.val_mask.sum() != 0:
         loader_dict["node_val_loader"] = NeighborLoader(
             node_masked_data,
@@ -75,7 +78,8 @@ def initialize_dataloaders(node_masked_data: Data,
             batch_size=node_batch_size,
             directed=False,
             shuffle=shuffle,
-            input_nodes=node_masked_data.val_mask)
+            input_nodes=node_masked_data.val_mask,
+        )
 
     # Edge-level dataloaders
     if edge_train_data is not None:
@@ -84,21 +88,27 @@ def initialize_dataloaders(node_masked_data: Data,
             num_neighbors=[n_direct_neighbors] * n_hops,
             batch_size=edge_batch_size,
             edge_label=None,  # will automatically be added as 1 for all edges
-            edge_label_index=edge_train_data.edge_label_index[:, edge_train_data.edge_label.bool()],
+            edge_label_index=edge_train_data.edge_label_index[
+                :, edge_train_data.edge_label.bool()
+            ],
             # limit the edges to the ones from the edge_label_adj
             directed=edges_directed,
             shuffle=shuffle,
-            neg_sampling_ratio=neg_edge_sampling_ratio)
+            neg_sampling_ratio=neg_edge_sampling_ratio,
+        )
     if edge_val_data is not None and edge_val_data.edge_label.sum() != 0:
         loader_dict["edge_val_loader"] = LinkNeighborLoader(
             edge_val_data,
             num_neighbors=[n_direct_neighbors] * n_hops,
             batch_size=edge_batch_size,
             edge_label=None,  # will automatically be added as 1 for all edges
-            edge_label_index=edge_val_data.edge_label_index[:, edge_val_data.edge_label.bool()],
+            edge_label_index=edge_val_data.edge_label_index[
+                :, edge_val_data.edge_label.bool()
+            ],
             # limit the edges to the ones from the edge_label_adj
             directed=edges_directed,
             shuffle=shuffle,
-            neg_sampling_ratio=neg_edge_sampling_ratio)
+            neg_sampling_ratio=neg_edge_sampling_ratio,
+        )
 
     return loader_dict

@@ -11,24 +11,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 def compute_omics_recon_mse_loss(recon_x, x):
     """Computes MSE loss between reconstructed data and ground truth data.
 
-       Parameters
-       ----------
-       recon_x: torch.Tensor
-            Torch Tensor of reconstructed data
-       x: torch.Tensor
-            Torch Tensor of ground truth data
+    Parameters
+    ----------
+    recon_x: torch.Tensor
+         Torch Tensor of reconstructed data
+    x: torch.Tensor
+         Torch Tensor of ground truth data
 
-       Returns
-       -------
-       MSE loss value
+    Returns
+    -------
+    MSE loss value
     """
-    mse_loss = F.mse_loss(recon_x, x) # , reduction='sum'
+    mse_loss = F.mse_loss(recon_x, x)  # , reduction='sum'
     return mse_loss
 
-def compute_adj_recon_loss(pos_adj, neg_adj, temperature, EPS = 1e-15):
+
+def compute_adj_recon_loss(pos_adj, neg_adj, temperature, EPS=1e-15):
     """
     Given latent variables :obj:`z`, computes the binary cross
     entropy loss for positive edges :obj:`pos_edge_index` and negative
@@ -40,11 +42,12 @@ def compute_adj_recon_loss(pos_adj, neg_adj, temperature, EPS = 1e-15):
 
     return total_loss
 
+
 def compute_edge_recon_loss(
-        edge_recon_logits: torch.Tensor,
-        edge_recon_labels: torch.Tensor,
-        edge_incl: Optional[torch.Tensor]=None
-        ) -> torch.Tensor:
+    edge_recon_logits: torch.Tensor,
+    edge_recon_labels: torch.Tensor,
+    edge_incl: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
     """
     Compute edge reconstruction weighted binary cross entropy loss with logits
     using ground truth edge labels and predicted edge logits.
@@ -75,19 +78,18 @@ def compute_edge_recon_loss(
         edge_recon_labels = edge_recon_labels[edge_incl]
 
     # Determine weighting of positive examples
-    pos_labels = (edge_recon_labels == 1.).sum(dim=0)
-    neg_labels = (edge_recon_labels == 0.).sum(dim=0)
+    pos_labels = (edge_recon_labels == 1.0).sum(dim=0)
+    neg_labels = (edge_recon_labels == 0.0).sum(dim=0)
     pos_weight = neg_labels / pos_labels
 
     # Compute weighted bce loss from logits for numerical stability
-    edge_recon_loss = F.binary_cross_entropy_with_logits(edge_recon_logits,
-                                                         edge_recon_labels,
-                                                         pos_weight=pos_weight)
+    edge_recon_loss = F.binary_cross_entropy_with_logits(
+        edge_recon_logits, edge_recon_labels, pos_weight=pos_weight
+    )
     return edge_recon_loss
 
 
-def compute_kl_reg_loss(mu: torch.Tensor,
-                        logstd: torch.Tensor) -> torch.Tensor:
+def compute_kl_reg_loss(mu: torch.Tensor, logstd: torch.Tensor) -> torch.Tensor:
     """
     Compute Kullback-Leibler divergence as per Kingma, D. P. & Welling, M.
     Auto-Encoding Variational Bayes. arXiv [stat.ML] (2013). Equation (10).
@@ -114,7 +116,8 @@ def compute_kl_reg_loss(mu: torch.Tensor,
     """
     # Sum over n_gps and mean over n_nodes_current_batch
     kl_reg_loss = -0.5 * torch.mean(
-        torch.sum(1 + 2 * logstd - mu ** 2 - torch.exp(logstd) ** 2, 1))
+        torch.sum(1 + 2 * logstd - mu**2 - torch.exp(logstd) ** 2, 1)
+    )
     return kl_reg_loss
 
 
@@ -134,6 +137,7 @@ def compute_contrastive_instanceloss(z_i, z_j, temperature):
 
     # Initialize Cross Entropy Loss
     criterion = nn.CrossEntropyLoss(reduction="sum")
+
     def mask_correlated_samples(batch_size):
         """
         Creates a mask to zero out correlations between the same samples.
@@ -176,7 +180,6 @@ def compute_contrastive_instanceloss(z_i, z_j, temperature):
     loss /= N
 
     return loss
-
 
 
 def compute_contrastive_clusterloss(c_i, c_j, class_num, temperature):
@@ -254,57 +257,77 @@ def pairwise_distance(x, y):
 
     return output
 
+
 def gaussian_kernel_matrix(x, y, alphas):
     """Computes multiscale-RBF kernel between x and y.
 
-       Parameters
-       ----------
-       x: torch.Tensor
-            Tensor with shape [batch_size, z_dim].
-       y: torch.Tensor
-            Tensor with shape [batch_size, z_dim].
-       alphas: Tensor
+    Parameters
+    ----------
+    x: torch.Tensor
+         Tensor with shape [batch_size, z_dim].
+    y: torch.Tensor
+         Tensor with shape [batch_size, z_dim].
+    alphas: Tensor
 
-       Returns
-       -------
-       Returns the computed multiscale-RBF kernel between x and y.
+    Returns
+    -------
+    Returns the computed multiscale-RBF kernel between x and y.
     """
 
     dist = pairwise_distance(x, y).contiguous()
     dist_ = dist.view(1, -1)
 
     alphas = alphas.view(alphas.shape[0], 1)
-    beta = 1. / (2. * alphas)
+    beta = 1.0 / (2.0 * alphas)
 
     s = torch.matmul(beta, dist_)
 
     return torch.sum(torch.exp(-s), 0).view_as(dist)
 
+
 def compute_omics_recon_mmd_loss(source_features, target_features):
     """Initializes Maximum Mean Discrepancy(MMD) between source_features and target_features.
 
-       - Gretton, Arthur, et al. "A Kernel Two-Sample Test". 2012.
+    - Gretton, Arthur, et al. "A Kernel Two-Sample Test". 2012.
 
-       Parameters
-       ----------
-       source_features: torch.Tensor
-            Tensor with shape [batch_size, z_dim]
-       target_features: torch.Tensor
-            Tensor with shape [batch_size, z_dim]
+    Parameters
+    ----------
+    source_features: torch.Tensor
+         Tensor with shape [batch_size, z_dim]
+    target_features: torch.Tensor
+         Tensor with shape [batch_size, z_dim]
 
-       Returns
-       -------
-       Returns the computed MMD between x and y.
+    Returns
+    -------
+    Returns the computed MMD between x and y.
     """
     alphas = [
-        1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 5, 10, 15, 20, 25, 30, 35, 100,
-        1e3, 1e4, 1e5, 1e6
+        1e-6,
+        1e-5,
+        1e-4,
+        1e-3,
+        1e-2,
+        1e-1,
+        1,
+        5,
+        10,
+        15,
+        20,
+        25,
+        30,
+        35,
+        100,
+        1e3,
+        1e4,
+        1e5,
+        1e6,
     ]
     alphas = Variable(torch.FloatTensor(alphas)).to(device=source_features.device)
 
     cost = torch.mean(gaussian_kernel_matrix(source_features, source_features, alphas))
     cost += torch.mean(gaussian_kernel_matrix(target_features, target_features, alphas))
-    cost -= 2 * torch.mean(gaussian_kernel_matrix(source_features, target_features, alphas))
+    cost -= 2 * torch.mean(
+        gaussian_kernel_matrix(source_features, target_features, alphas)
+    )
 
     return cost
-

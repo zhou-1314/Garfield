@@ -129,4 +129,3 @@ Tools
 
    trainer.EarlyStopping
    trainer.print_progress
-

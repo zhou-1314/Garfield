@@ -19,6 +19,7 @@ from sklearn.cross_decomposition import CCA
 from sklearn.utils.extmath import randomized_svd
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +42,15 @@ def reindex(adata, genes):
     user_var_names = adata.var_names
     user_var_names = user_var_names.astype(str)
     try:
-        percentage = (len(user_var_names.intersection(genes)) / len(user_var_names)) * 100
+        percentage = (
+            len(user_var_names.intersection(genes)) / len(user_var_names)
+        ) * 100
         percentage = round(percentage, 4)
         if percentage != 100:
-            logger.warning(f"WARNING: Query shares {percentage}% of its genes with the reference."
-                           "This may lead to inaccuracy in the results.")
+            logger.warning(
+                f"WARNING: Query shares {percentage}% of its genes with the reference."
+                "This may lead to inaccuracy in the results."
+            )
     except Exception:
         logger.warning("WARNING: Something is wrong with the reference genes.")
 
@@ -56,18 +61,20 @@ def reindex(adata, genes):
             ref_genes_not_in_query.append(name)
 
     if len(ref_genes_not_in_query) > 0:
-        print("Query data is missing expression data of ",
-              len(ref_genes_not_in_query),
-              " genes which were contained in the reference dataset.")
+        print(
+            "Query data is missing expression data of ",
+            len(ref_genes_not_in_query),
+            " genes which were contained in the reference dataset.",
+        )
 
     idx = [i for i, g in enumerate(genes) if g in adata.var_names]
-    print('There are {} gene in selected genes'.format(len(idx)))
+    print("There are {} gene in selected genes".format(len(idx)))
     if len(idx) == len(genes):
         adata = adata[:, genes]
     else:
         new_X = scipy.sparse.lil_matrix((adata.shape[0], len(genes)))
         new_X[:, idx] = adata[:, genes[idx]].X
-        adata = AnnData(new_X.tocsr(), obs=adata.obs, var={'var_names': genes})
+        adata = AnnData(new_X.tocsr(), obs=adata.obs, var={"var_names": genes})
     return adata
 
 
@@ -95,7 +102,7 @@ def get_centroids(sub_data, labels):
 
     unique_labels = sorted(cluster_label_to_indices.keys())
     if not all(i == l for i, l in enumerate(unique_labels)):
-        raise ValueError('labels must be coded in integers from 0, ..., n_clusters-1.')
+        raise ValueError("labels must be coded in integers from 0, ..., n_clusters-1.")
 
     ## 对于每个簇，计算其均值，返回标准化的矩阵
     centroids = np.empty((len(unique_labels), arr.shape[1]))
@@ -107,13 +114,16 @@ def get_centroids(sub_data, labels):
     for curr_label, indices in cluster_label_to_indices.items():
         counts[curr_label, :] = arr_raw[indices, :].mean(axis=0)
 
-    meta_info = np.empty((len(unique_labels), meta.shape[1]),
-                         dtype=object)  # dtype=object 的意思是在 NumPy 数组中使用 Python 对象作为数据类型
+    meta_info = np.empty(
+        (len(unique_labels), meta.shape[1]), dtype=object
+    )  # dtype=object 的意思是在 NumPy 数组中使用 Python 对象作为数据类型
     for curr_label, indices in cluster_label_to_indices.items():
         for col_idx in range(meta.shape[1]):
             if is_numeric_dtype(meta.iloc[indices, col_idx].dtype):
                 # 如果是数值型数据
-                meta_info[curr_label, col_idx] = meta.iloc[indices, col_idx].mean(axis=0)
+                meta_info[curr_label, col_idx] = meta.iloc[indices, col_idx].mean(
+                    axis=0
+                )
             else:
                 # 如果是字符型或其他类型 则通过投票找到最可能的label
                 true_labels = meta.iloc[:, col_idx]  # .tolist()
@@ -135,6 +145,7 @@ def get_centroids(sub_data, labels):
     adata_sub.var_names = sub_data.var_names
     del adata_raw
     return adata_sub
+
 
 ## summarize_clustering
 def summarize_clustering(clustering, curr_label, true_labels):
@@ -199,10 +210,11 @@ def cdist_correlation(arr1, arr2):
     arr1 = (arr1.T - np.mean(arr1, axis=1)).T
     arr2 = (arr2.T - np.mean(arr2, axis=1)).T
 
-    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1 ** 2, axis=1))).T
-    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2 ** 2, axis=1))).T
+    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1**2, axis=1))).T
+    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2**2, axis=1))).T
 
     return 1 - arr1 @ arr2.T
+
 
 def convert_to_numpy(arr):
     if isinstance(arr, csr_matrix):
@@ -211,6 +223,7 @@ def convert_to_numpy(arr):
         return arr
     else:
         raise TypeError("Unsupported data type.")
+
 
 def drop_zero_variability_columns(arr_lst: list, tol=1e-8):
     """
@@ -257,10 +270,12 @@ def robust_svd(arr, n_components, randomized=False, n_runs=1):
         u @ np.diag(s) @ vh is the reconstruction of the original arr
     """
     if randomized:
-        best_err = float('inf')
+        best_err = float("inf")
         u, s, vh = None, None, None
         for _ in range(n_runs):
-            curr_u, curr_s, curr_vh = randomized_svd(arr, n_components=n_components, random_state=None)
+            curr_u, curr_s, curr_vh = randomized_svd(
+                arr, n_components=n_components, random_state=None
+            )
             curr_err = np.sum((arr - curr_u @ np.diag(curr_s) @ curr_vh) ** 2)
             if curr_err < best_err:
                 best_err = curr_err
@@ -269,8 +284,9 @@ def robust_svd(arr, n_components, randomized=False, n_runs=1):
     else:
         if n_runs > 1:
             warnings.warn("Doing deterministic SVD, n_runs reset to one.")
-        u, s, vh = svds(arr*1.0, k=n_components) # svds can not handle integer values
+        u, s, vh = svds(arr * 1.0, k=n_components)  # svds can not handle integer values
     return u, s, vh
+
 
 def svd_denoise(arr, n_components=20, randomized=False, n_runs=1):
     """
@@ -294,8 +310,11 @@ def svd_denoise(arr, n_components=20, randomized=False, n_runs=1):
     """
     if n_components is None:
         return arr
-    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    u, s, vh = robust_svd(
+        arr, n_components=n_components, randomized=randomized, n_runs=n_runs
+    )
     return u @ np.diag(s) @ vh
+
 
 def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
     """
@@ -321,9 +340,10 @@ def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
 
     if n_components is None:
         return arr
-    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    u, s, vh = robust_svd(
+        arr, n_components=n_components, randomized=randomized, n_runs=n_runs
+    )
     return u @ np.diag(s)
-
 
 
 def center_scale(arr):
@@ -367,7 +387,12 @@ def filter_bad_matches(matching, filter_prop=0.1):
             rows.append(i)
             cols.append(j)
             vals.append(val)
-    return np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32), np.array(vals, dtype=np.float32)
+    return (
+        np.array(rows, dtype=np.int32),
+        np.array(cols, dtype=np.int32),
+        np.array(vals, dtype=np.float32),
+    )
+
 
 def pearson_correlation(arr1, arr2):
     """Calculate the vector of pearson correlations between each row of arr1 and arr2.
@@ -390,10 +415,11 @@ def pearson_correlation(arr1, arr2):
     arr1 = (arr1.T - np.mean(arr1, axis=1)).T
     arr2 = (arr2.T - np.mean(arr2, axis=1)).T
 
-    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1 ** 2, axis=1))).T
-    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2 ** 2, axis=1))).T
+    arr1 = (arr1.T / np.sqrt(1e-6 + np.sum(arr1**2, axis=1))).T
+    arr2 = (arr2.T / np.sqrt(1e-6 + np.sum(arr2**2, axis=1))).T
 
     return np.sum(arr1 * arr2, axis=1)
+
 
 def cca_embedding(arr1, arr2, init_matching, filter_prop, n_components, max_iter=2000):
     """
@@ -437,18 +463,20 @@ def cca_embedding(arr1, arr2, init_matching, filter_prop, n_components, max_iter
     arr2_aligned_cca = center_scale(arr2_aligned_cca)
 
     canonical_correlations = np.corrcoef(
-        arr1_aligned_cca, arr2_aligned_cca, rowvar=False).diagonal(offset=n_components)
+        arr1_aligned_cca, arr2_aligned_cca, rowvar=False
+    ).diagonal(offset=n_components)
     arr1_cca, arr2_cca = cca.transform(arr1, arr2)
     arr1_cca = center_scale(arr1_cca)
     arr2_cca = center_scale(arr2_cca)
 
     return arr1_cca, arr2_cca, canonical_correlations
 
+
 def clr_normalize_each_cell(adata, inplace=True):
     """Normalize count vector for each cell, i.e. for each row of .X"""
 
     def seurat_clr(x):
-        """ A modified CLR function that supports sparse input """
+        """A modified CLR function that supports sparse input"""
         if scipy.sparse.issparse(x):
             # Only take non-zero entries for calculation
             nonzero_vals = x.data
@@ -484,18 +512,21 @@ def tfidf(X, n_components, binarize=True, random_state=0):
     if binarize:
         sc_count = np.where(sc_count < 1, sc_count, 1)
 
-    tfidf = TfidfTransformer(norm='l2', sublinear_tf=True)
+    tfidf = TfidfTransformer(norm="l2", sublinear_tf=True)
     normed_count = tfidf.fit_transform(sc_count)
 
-    lsi = sklearn.decomposition.TruncatedSVD(n_components=n_components, random_state=random_state)
+    lsi = sklearn.decomposition.TruncatedSVD(
+        n_components=n_components, random_state=random_state
+    )
     lsi_r = lsi.fit_transform(normed_count)
 
     X_lsi = lsi_r[:, 1:]
 
     return normed_count, X_lsi
 
+
 def TFIDF_LSI(adata, n_comps=50, binarize=True, random_state=0):
-    '''
+    """
     Computes LSI based on a TF-IDF transformation of the data from MultiMap. Putative dimensionality
     reduction for scATAC-seq data. Adds an ``.obsm['X_lsi']`` field to the object it was ran on.
 
@@ -510,19 +541,27 @@ def TFIDF_LSI(adata, n_comps=50, binarize=True, random_state=0):
         processing. Default: True
     random_state : ``int``
         The seed to use for randon number generation. Default: 0
-    '''
+    """
 
     # this is just a very basic wrapper for the non-adata function
     import scipy
+
     if scipy.sparse.issparse(adata.X):
-        adata.X, adata.obsm['X_lsi'] = tfidf(adata.X.todense(), n_components=n_comps, binarize=binarize,
-                                    random_state=random_state)
+        adata.X, adata.obsm["X_lsi"] = tfidf(
+            adata.X.todense(),
+            n_components=n_comps,
+            binarize=binarize,
+            random_state=random_state,
+        )
     else:
-        adata.X, adata.obsm['X_lsi'] = tfidf(adata.X, n_components=n_comps, binarize=binarize, random_state=random_state)
+        adata.X, adata.obsm["X_lsi"] = tfidf(
+            adata.X, n_components=n_comps, binarize=binarize, random_state=random_state
+        )
+
 
 ## Predict gene scores based on chromatin accessibility
 ## issue https://www.biostars.org/p/114460/ 需要确保bedtools被安装了。
-def _uniquify(seq, sep='-'):
+def _uniquify(seq, sep="-"):
     """Uniquify a list of strings.
 
     Adding unique numbers to duplicate values.
@@ -551,9 +590,9 @@ def _uniquify(seq, sep='-'):
             dups[val][1] += 1
 
             # Use stored occurrence value
-            seq[i] += (sep+str(dups[val][1]))
+            seq[i] += sep + str(dups[val][1])
 
-    return(seq)
+    return seq
 
 
 class GeneScores:
@@ -566,19 +605,22 @@ class GeneScores:
     -------
 
     """
-    def __init__(self,
-                 adata,
-                 genome,
-                 gene_anno=None,
-                 tss_upstream=1e5,
-                 tss_downsteam=1e5,
-                 gb_upstream=5000,
-                 cutoff_weight=1,
-                 use_top_pcs=False,
-                 use_precomputed=True,
-                 use_gene_weight=True,
-                 min_w=1,
-                 max_w=5):
+
+    def __init__(
+        self,
+        adata,
+        genome,
+        gene_anno=None,
+        tss_upstream=1e5,
+        tss_downsteam=1e5,
+        gb_upstream=5000,
+        cutoff_weight=1,
+        use_top_pcs=False,
+        use_precomputed=True,
+        use_gene_weight=True,
+        min_w=1,
+        max_w=5,
+    ):
         """
         Parameters
         ----------
@@ -610,17 +652,23 @@ class GeneScores:
         -------
 
         """
-        assert (self.genome in ['hg19', 'hg38', 'mm9', 'mm10']),\
-            "`genome` must be one of ['hg19','hg38','mm9','mm10']"
+        assert self.genome in [
+            "hg19",
+            "hg38",
+            "mm9",
+            "mm10",
+        ], "`genome` must be one of ['hg19','hg38','mm9','mm10']"
 
-        bin_str = pkgutil.get_data('Garfield',
-                                   f'data/gene_anno/{self.genome}_genes.bed')
-        gene_anno = pd.read_csv(io.BytesIO(bin_str),
-                                encoding='utf8',
-                                sep='\t',
-                                header=None,
-                                names=['chr', 'start', 'end',
-                                       'symbol', 'strand'])
+        bin_str = pkgutil.get_data(
+            "Garfield", f"data/gene_anno/{self.genome}_genes.bed"
+        )
+        gene_anno = pd.read_csv(
+            io.BytesIO(bin_str),
+            encoding="utf8",
+            sep="\t",
+            header=None,
+            names=["chr", "start", "end", "symbol", "strand"],
+        )
         self.gene_anno = gene_anno
         return self.gene_anno
 
@@ -635,12 +683,11 @@ class GeneScores:
 
         """
         ext_tss = pbt_gene
-        if(ext_tss['strand'] == '+'):
+        if ext_tss["strand"] == "+":
             ext_tss.start = max(0, ext_tss.start - self.tss_upstream)
             ext_tss.end = max(ext_tss.end, ext_tss.start + self.tss_downsteam)
         else:
-            ext_tss.start = max(0, min(ext_tss.start,
-                                       ext_tss.end - self.tss_downsteam))
+            ext_tss.start = max(0, min(ext_tss.start, ext_tss.end - self.tss_downsteam))
             ext_tss.end = ext_tss.end + self.tss_upstream
         return ext_tss
 
@@ -655,7 +702,7 @@ class GeneScores:
 
         """
         ext_gb = pbt_gene
-        if(ext_gb['strand'] == '+'):
+        if ext_gb["strand"] == "+":
             ext_gb.start = max(0, ext_gb.start - self.gb_upstream)
         else:
             ext_gb.end = ext_gb.end + self.gb_upstream
@@ -672,10 +719,11 @@ class GeneScores:
 
         """
         gene_anno = self.gene_anno
-        gene_size = gene_anno['end'] - gene_anno['start']
-        w = 1/gene_size
-        w_scaled = (self.max_w-self.min_w) * (w-min(w)) / (max(w)-min(w)) \
-            + self.min_w
+        gene_size = gene_anno["end"] - gene_anno["start"]
+        w = 1 / gene_size
+        w_scaled = (self.max_w - self.min_w) * (w - min(w)) / (
+            max(w) - min(w)
+        ) + self.min_w
         return w_scaled
 
     def cal_gene_scores(self):
@@ -695,137 +743,146 @@ class GeneScores:
             gene_ann = self.gene_anno
 
         df_gene_ann = gene_ann.copy()
-        df_gene_ann.index = _uniquify(df_gene_ann['symbol'].values)
+        df_gene_ann.index = _uniquify(df_gene_ann["symbol"].values)
         if self.use_top_pcs:
-            mask_p = adata.var['top_pcs']
+            mask_p = adata.var["top_pcs"]
         else:
             mask_p = pd.Series(True, index=adata.var_names)
-        df_peaks = adata.var[mask_p][['chr', 'start', 'end']].copy()
+        df_peaks = adata.var[mask_p][["chr", "start", "end"]].copy()
 
-        if('gene_scores' not in adata.uns_keys()):
-            print('Gene scores are being calculated for the first time')
-            print('`use_precomputed` has been ignored')
+        if "gene_scores" not in adata.uns_keys():
+            print("Gene scores are being calculated for the first time")
+            print("`use_precomputed` has been ignored")
             self.use_precomputed = False
 
-        if(self.use_precomputed):
-            print('Using precomputed overlap')
-            df_overlap_updated = adata.uns['gene_scores']['overlap'].copy()
+        if self.use_precomputed:
+            print("Using precomputed overlap")
+            df_overlap_updated = adata.uns["gene_scores"]["overlap"].copy()
         else:
             # add the fifth column
             # so that pybedtool can recognize the sixth column as the strand
             df_gene_ann_for_pbt = df_gene_ann.copy()
-            df_gene_ann_for_pbt['score'] = 0
-            df_gene_ann_for_pbt = df_gene_ann_for_pbt[['chr', 'start', 'end',
-                                                       'symbol', 'score',
-                                                       'strand']]
-            df_gene_ann_for_pbt['id'] = range(df_gene_ann_for_pbt.shape[0])
+            df_gene_ann_for_pbt["score"] = 0
+            df_gene_ann_for_pbt = df_gene_ann_for_pbt[
+                ["chr", "start", "end", "symbol", "score", "strand"]
+            ]
+            df_gene_ann_for_pbt["id"] = range(df_gene_ann_for_pbt.shape[0])
 
             df_peaks_for_pbt = df_peaks.copy()
-            df_peaks_for_pbt['id'] = range(df_peaks_for_pbt.shape[0])
+            df_peaks_for_pbt["id"] = range(df_peaks_for_pbt.shape[0])
 
-            pbt_gene_ann = pybedtools.BedTool.from_dataframe(
-                df_gene_ann_for_pbt
-                )
+            pbt_gene_ann = pybedtools.BedTool.from_dataframe(df_gene_ann_for_pbt)
             pbt_gene_ann_ext = pbt_gene_ann.each(self._extend_tss)
             pbt_gene_gb_ext = pbt_gene_ann.each(self._extend_genebody)
 
             pbt_peaks = pybedtools.BedTool.from_dataframe(df_peaks_for_pbt)
 
             # peaks overlapping with extended TSS
-            pbt_overlap = pbt_peaks.intersect(pbt_gene_ann_ext,
-                                              wa=True,
-                                              wb=True)
+            pbt_overlap = pbt_peaks.intersect(pbt_gene_ann_ext, wa=True, wb=True)
             df_overlap = pbt_overlap.to_dataframe(
-                names=[x+'_p' for x in df_peaks_for_pbt.columns]
-                + [x+'_g' for x in df_gene_ann_for_pbt.columns])
+                names=[x + "_p" for x in df_peaks_for_pbt.columns]
+                + [x + "_g" for x in df_gene_ann_for_pbt.columns]
+            )
             # peaks overlapping with gene body
-            pbt_overlap2 = pbt_peaks.intersect(pbt_gene_gb_ext,
-                                               wa=True,
-                                               wb=True)
+            pbt_overlap2 = pbt_peaks.intersect(pbt_gene_gb_ext, wa=True, wb=True)
             df_overlap2 = pbt_overlap2.to_dataframe(
-                names=[x+'_p' for x in df_peaks_for_pbt.columns]
-                + [x+'_g' for x in df_gene_ann_for_pbt.columns])
+                names=[x + "_p" for x in df_peaks_for_pbt.columns]
+                + [x + "_g" for x in df_gene_ann_for_pbt.columns]
+            )
 
             # add distance and weight for each overlap
             df_overlap_updated = df_overlap.copy()
-            df_overlap_updated['dist'] = 0
+            df_overlap_updated["dist"] = 0
 
-            for i, x in enumerate(df_overlap['symbol_g'].unique()):
+            for i, x in enumerate(df_overlap["symbol_g"].unique()):
                 # peaks within the extended TSS
-                df_overlap_x = \
-                    df_overlap[df_overlap['symbol_g'] == x].copy()
+                df_overlap_x = df_overlap[df_overlap["symbol_g"] == x].copy()
                 # peaks within the gene body
-                df_overlap2_x = \
-                    df_overlap2[df_overlap2['symbol_g'] == x].copy()
+                df_overlap2_x = df_overlap2[df_overlap2["symbol_g"] == x].copy()
                 # peaks that are not intersecting with the promoter
                 # and gene body of gene x
                 id_overlap = df_overlap_x.index[
-                    ~np.isin(df_overlap_x['id_p'], df_overlap2_x['id_p'])]
-                mask_x = (df_gene_ann['symbol'] == x)
-                range_x = df_gene_ann[mask_x][['start', 'end']].values\
-                    .flatten()
-                if(df_overlap_x['strand_g'].iloc[0] == '+'):
-                    df_overlap_updated.loc[id_overlap, 'dist'] = pd.concat(
-                        [abs(df_overlap_x.loc[id_overlap, 'start_p']
-                             - (range_x[1])),
-                         abs(df_overlap_x.loc[id_overlap, 'end_p']
-                             - max(0, range_x[0]-self.gb_upstream))],
-                        axis=1, sort=False).min(axis=1)
+                    ~np.isin(df_overlap_x["id_p"], df_overlap2_x["id_p"])
+                ]
+                mask_x = df_gene_ann["symbol"] == x
+                range_x = df_gene_ann[mask_x][["start", "end"]].values.flatten()
+                if df_overlap_x["strand_g"].iloc[0] == "+":
+                    df_overlap_updated.loc[id_overlap, "dist"] = pd.concat(
+                        [
+                            abs(df_overlap_x.loc[id_overlap, "start_p"] - (range_x[1])),
+                            abs(
+                                df_overlap_x.loc[id_overlap, "end_p"]
+                                - max(0, range_x[0] - self.gb_upstream)
+                            ),
+                        ],
+                        axis=1,
+                        sort=False,
+                    ).min(axis=1)
                 else:
-                    df_overlap_updated.loc[id_overlap, 'dist'] = pd.concat(
-                        [abs(df_overlap_x.loc[id_overlap, 'start_p']
-                             - (range_x[1]+self.gb_upstream)),
-                         abs(df_overlap_x.loc[id_overlap, 'end_p']
-                             - (range_x[0]))],
-                        axis=1, sort=False).min(axis=1)
+                    df_overlap_updated.loc[id_overlap, "dist"] = pd.concat(
+                        [
+                            abs(
+                                df_overlap_x.loc[id_overlap, "start_p"]
+                                - (range_x[1] + self.gb_upstream)
+                            ),
+                            abs(df_overlap_x.loc[id_overlap, "end_p"] - (range_x[0])),
+                        ],
+                        axis=1,
+                        sort=False,
+                    ).min(axis=1)
 
-                n_batch = int(df_gene_ann_for_pbt.shape[0]/5)
-                if(i % n_batch == 0):
-                    print(f'Processing: {i/df_gene_ann_for_pbt.shape[0]:.1%}')
-            df_overlap_updated['dist'] = df_overlap_updated['dist']\
-                .astype(float)
+                n_batch = int(df_gene_ann_for_pbt.shape[0] / 5)
+                if i % n_batch == 0:
+                    print(f"Processing: {i/df_gene_ann_for_pbt.shape[0]:.1%}")
+            df_overlap_updated["dist"] = df_overlap_updated["dist"].astype(float)
 
-            adata.uns['gene_scores'] = dict()
-            adata.uns['gene_scores']['overlap'] = df_overlap_updated.copy()
+            adata.uns["gene_scores"] = dict()
+            adata.uns["gene_scores"]["overlap"] = df_overlap_updated.copy()
 
-        df_overlap_updated['weight'] = np.exp(
-            -(df_overlap_updated['dist'].values/self.gb_upstream))
-        mask_w = (df_overlap_updated['weight'] < self.cutoff_weight)
-        df_overlap_updated.loc[mask_w, 'weight'] = 0
+        df_overlap_updated["weight"] = np.exp(
+            -(df_overlap_updated["dist"].values / self.gb_upstream)
+        )
+        mask_w = df_overlap_updated["weight"] < self.cutoff_weight
+        df_overlap_updated.loc[mask_w, "weight"] = 0
         # construct genes-by-peaks matrix
-        mat_GP = csr_matrix(coo_matrix((df_overlap_updated['weight'],
-                                       (df_overlap_updated['id_g'],
-                                        df_overlap_updated['id_p'])),
-                                       shape=(df_gene_ann.shape[0],
-                                              df_peaks.shape[0])))
+        mat_GP = csr_matrix(
+            coo_matrix(
+                (
+                    df_overlap_updated["weight"],
+                    (df_overlap_updated["id_g"], df_overlap_updated["id_p"]),
+                ),
+                shape=(df_gene_ann.shape[0], df_peaks.shape[0]),
+            )
+        )
         # adata_GP = ad.AnnData(X=csr_matrix(mat_GP),
         #                       obs=df_gene_ann,
         #                       var=df_peaks)
         # adata_GP.layers['weight'] = adata_GP.X.copy()
         if self.use_gene_weight:
             gene_weights = self._weight_genes()
-            gene_scores = adata[:, mask_p].X * \
-                (mat_GP.T.multiply(gene_weights))
+            gene_scores = adata[:, mask_p].X * (mat_GP.T.multiply(gene_weights))
         else:
             gene_scores = adata[:, mask_p].X * mat_GP.T
-        adata_CG_atac = ad.AnnData(gene_scores,
-                                   obs=adata.obs.copy(),
-                                   var=df_gene_ann.copy())
+        adata_CG_atac = ad.AnnData(
+            gene_scores, obs=adata.obs.copy(), var=df_gene_ann.copy()
+        )
         return adata_CG_atac
 
 
-def gene_scores(adata,
-                genome,
-                gene_anno=None,
-                tss_upstream=1e5,
-                tss_downsteam=1e5,
-                gb_upstream=5000,
-                cutoff_weight=1,
-                use_top_pcs=True,
-                use_precomputed=True,
-                use_gene_weight=True,
-                min_w=1,
-                max_w=5):
+def gene_scores(
+    adata,
+    genome,
+    gene_anno=None,
+    tss_upstream=1e5,
+    tss_downsteam=1e5,
+    gb_upstream=5000,
+    cutoff_weight=1,
+    use_top_pcs=True,
+    use_precomputed=True,
+    use_gene_weight=True,
+    min_w=1,
+    max_w=5,
+):
     """
     Calculate gene scores of scATACseq data
 
@@ -873,18 +930,19 @@ def gene_scores(adata,
     overlap: `pandas.DataFrame`, (`adata.uns['gene_scores']['overlap']`)
         Dataframe of overlap between peaks and genes
     """
-    GS = GeneScores(adata,
-                    genome,
-                    gene_anno=gene_anno,
-                    tss_upstream=tss_upstream,
-                    tss_downsteam=tss_downsteam,
-                    gb_upstream=gb_upstream,
-                    cutoff_weight=cutoff_weight,
-                    use_top_pcs=use_top_pcs,
-                    use_precomputed=use_precomputed,
-                    use_gene_weight=use_gene_weight,
-                    min_w=min_w,
-                    max_w=max_w)
+    GS = GeneScores(
+        adata,
+        genome,
+        gene_anno=gene_anno,
+        tss_upstream=tss_upstream,
+        tss_downsteam=tss_downsteam,
+        gb_upstream=gb_upstream,
+        cutoff_weight=cutoff_weight,
+        use_top_pcs=use_top_pcs,
+        use_precomputed=use_precomputed,
+        use_gene_weight=use_gene_weight,
+        min_w=min_w,
+        max_w=max_w,
+    )
     adata_CG_atac = GS.cal_gene_scores()
     return adata_CG_atac
-

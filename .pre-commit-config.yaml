@@ -1,0 +1,19 @@
+repos:
+  # Black: 用于自动格式化Python代码
+  - repo: https://github.com/psf/black
+    rev: 22.6.0
+    hooks:
+      - id: black
+
+  # Flake8: 用于检查Python代码风格和潜在问题
+  - repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+
+  # Pre-commit hooks: 常用的一些代码修复工具
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: trailing-whitespace  # 清除行尾的多余空格
+      - id: end-of-file-fixer    # 确保文件末尾有一个换行符

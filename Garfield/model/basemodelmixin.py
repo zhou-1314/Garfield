@@ -10,6 +10,7 @@ import warnings
 from typing import Optional
 
 import numpy as np
+
 # import pickle
 import scipy.sparse as sp
 import torch
@@ -18,7 +19,7 @@ from anndata import AnnData
 from .utils import load_saved_files, save_model_with_fallback
 
 
-class BaseModelMixin():
+class BaseModelMixin:
     """
     Base model mix in class for universal model functionalities.
 
@@ -43,12 +44,14 @@ class BaseModelMixin():
         public_attributes = {a[0]: a[1] for a in public_attributes if a[0][-1] == "_"}
         return public_attributes
 
-    def save(self,
-             dir_path: str,
-             overwrite: bool = False,
-             save_adata: bool = False,
-             adata_file_name: str = "adata_ref.h5ad",
-             **anndata_write_kwargs):
+    def save(
+        self,
+        dir_path: str,
+        overwrite: bool = False,
+        save_adata: bool = False,
+        adata_file_name: str = "adata_ref.h5ad",
+        **anndata_write_kwargs,
+    ):
         """
         Save model to disk (the Trainer optimizer state is not saved).
 
@@ -69,8 +72,10 @@ class BaseModelMixin():
         if not os.path.exists(dir_path) or overwrite:
             os.makedirs(dir_path, exist_ok=overwrite)
         else:
-            raise ValueError(f"Directory '{dir_path}' already exists."
-                             "Please provide another directory for saving.")
+            raise ValueError(
+                f"Directory '{dir_path}' already exists."
+                "Please provide another directory for saving."
+            )
 
         model_save_path = os.path.join(dir_path, "model_params.pt")
         attr_save_path = os.path.join(dir_path, "attr.pkl")
@@ -79,14 +84,23 @@ class BaseModelMixin():
         if save_adata:
             # Convert storage format of adjacency matrix to be writable by
             # adata.write()
-            if "spatial_connectivities" in self.adata.obsp.keys() and self.adata.obsp["spatial_connectivities"] is not None:
+            if (
+                "spatial_connectivities" in self.adata.obsp.keys()
+                and self.adata.obsp["spatial_connectivities"] is not None
+            ):
                 self.adata.obsp["spatial_connectivities"] = sp.csr_matrix(
-                    self.adata.obsp["spatial_connectivities"])
-            if "connectivities" in self.adata.obsp.keys() and self.adata.obsp["connectivities"] is not None:
+                    self.adata.obsp["spatial_connectivities"]
+                )
+            if (
+                "connectivities" in self.adata.obsp.keys()
+                and self.adata.obsp["connectivities"] is not None
+            ):
                 self.adata.obsp["connectivities"] = sp.csr_matrix(
-                    self.adata.obsp["connectivities"])
+                    self.adata.obsp["connectivities"]
+                )
             self.adata.write(
-                os.path.join(dir_path, adata_file_name), **anndata_write_kwargs)
+                os.path.join(dir_path, adata_file_name), **anndata_write_kwargs
+            )
 
         var_names = self.adata.var_names.astype(str).to_numpy()
         public_attributes = self._get_public_attributes()
@@ -98,16 +112,17 @@ class BaseModelMixin():
         #     pickle.dump(public_attributes, f)
 
     @classmethod
-    def load_query_data(cls,
-             dir_path: str,
-             query_adata: Optional[AnnData] = None,
-             ref_adata_name: str = "adata_ref.h5ad",
-             use_cuda: bool = True,
-             unfreeze_all_weights: bool = False,
-             unfreeze_eps_weight: bool = False,
-             unfreeze_layer0: bool = False,
-             **kwargs
-             ) -> torch.nn.Module:
+    def load_query_data(
+        cls,
+        dir_path: str,
+        query_adata: Optional[AnnData] = None,
+        ref_adata_name: str = "adata_ref.h5ad",
+        use_cuda: bool = True,
+        unfreeze_all_weights: bool = False,
+        unfreeze_eps_weight: bool = False,
+        unfreeze_layer0: bool = False,
+        **kwargs,
+    ) -> torch.nn.Module:
         """
         Instantiate a model from saved output. Can be used for transfer learning
         scenarios and to learn de-novo gene programs by adding add-on gene
@@ -136,17 +151,18 @@ class BaseModelMixin():
         use_cuda = use_cuda and torch.cuda.is_available()
         map_location = torch.device("cpu") if use_cuda is False else None
 
-        model_state_dict, var_names, attr_dict, adata_concat = (
-            load_saved_files(dir_path=dir_path,
-                             query_adata=query_adata,
-                             ref_adata_name=ref_adata_name,
-                             map_location=map_location))
+        model_state_dict, var_names, attr_dict, adata_concat = load_saved_files(
+            dir_path=dir_path,
+            query_adata=query_adata,
+            ref_adata_name=ref_adata_name,
+            map_location=map_location,
+        )
         # print('model_state_dict.keys() is', model_state_dict.keys())
 
         init_params = deepcopy(cls._get_init_params_from_dict(attr_dict))
         # don't preprocess the data
-        init_params['min_features'] = 0
-        init_params['adata_list'] = adata_concat
+        init_params["min_features"] = 0
+        init_params["adata_list"] = adata_concat
         init_params.update(kwargs)
 
         # model = initialize_model(cls, init_params)
@@ -175,8 +191,7 @@ class BaseModelMixin():
         if unfreeze_eps_weight:
             # allow updates of eps_weight
             for param_name, param in model.model.named_parameters():
-                if "eps_weight" in param_name or \
-                        "eps_bias" in param_name:
+                if "eps_weight" in param_name or "eps_bias" in param_name:
                     param.requires_grad = True
         if unfreeze_layer0:
             # Allow updates of the first embedder weights
@@ -186,8 +201,7 @@ class BaseModelMixin():
 
         return model
 
-    def _check_if_trained(self,
-                          warn: bool = True):
+    def _check_if_trained(self, warn: bool = True):
         """
         Check if the model is trained.
 
@@ -197,8 +211,10 @@ class BaseModelMixin():
              If not trained and `warn` is True, raise a warning, else raise a
              RuntimeError.
         """
-        message = ("Trying to query inferred values from an untrained model. "
-                   "Please train the model first.")
+        message = (
+            "Trying to query inferred values from an untrained model. "
+            "Please train the model first."
+        )
         if not self.is_trained_:
             if warn:
                 warnings.warn(message)
