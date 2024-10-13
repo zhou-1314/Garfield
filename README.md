@@ -6,7 +6,7 @@
 [![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)
 [![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![PyPI](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
 <img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
 

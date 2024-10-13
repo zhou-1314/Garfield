@@ -1,3 +1,5 @@
+|Docs| |Pypi| |Downloads| |Code style| |pre-commit| |License|
+
 Garfield: Graph-based Contrastive Learning enables Fast Single-Cell Embedding
 =============================================================================
 
@@ -33,5 +35,22 @@ Garfield is a novel graph representation algorithm with contrastive learning to 
    tutorial/06.Garfield_spMulti_mouse_brain
 
 
+.. |Docs| image:: https://readthedocs.org/projects/garfield-bio/badge/?version=latest
+   :target: https://garfield-bio.readthedocs.io
+
+.. |Pypi| image:: https://img.shields.io/pypi/v/garfield
+   :target: https://pypi.org/project/garfield
+
+.. |Downloads| image:: https://static.pepy.tech/badge/Garfield/month
+   :target: https://pepy.tech/project/Garfield
+
+.. |Code style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+
+.. |pre-commit| image:: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white
+   :target: https://github.com/pre-commit/pre-commit
+
+.. |License| image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
+   :target: https://github.com/zhou-1314/Garfield/blob/main/LICENSE
 
 
