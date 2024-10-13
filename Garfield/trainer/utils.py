@@ -7,11 +7,30 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
+
+def get_device(device_id):
+    # 获取可用的GPU数量
+    available_gpus = torch.cuda.device_count()
+
+    # 如果有可用的GPU且设定的device_id有效，使用该GPU
+    if torch.cuda.is_available() and device_id < available_gpus:
+        device = torch.device(f"cuda:{device_id}")
+        print(f"Using GPU: {device_id}")
+    # 如果设定的device_id无效或没有可用GPU，使用CPU
+    else:
+        device = torch.device("cpu")
+        if available_gpus > 0:
+            print(f"Warning: device_id {device_id} is out of range. Using CPU instead.")
+        else:
+            print("No GPU available. Using CPU.")
+
+    return device
 
 class EarlyStopping:
     """
-    EarlyStopping class for early stopping of NicheCompass training.
+    EarlyStopping class for early stopping of Garfield training.
     Parts of the implementation are adapted from
     https://github.com/theislab/scarches/blob/cb54fa0df3255ad1576a977b17e9d77d4907ceb0/scarches/utils/monitor.py#L4
     (01.10.2022).

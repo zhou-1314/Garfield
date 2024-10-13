@@ -4,43 +4,25 @@ from typing import Optional, Union
 from collections import defaultdict
 import os
 import time
-import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 import copy
 import math
 import numpy as np
 import random
-import scanpy as sc
-from anndata import concat
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.data import Data
-from torch_geometric.data import InMemoryDataset
-from torch_geometric.sampler import NeighborSampler
-from torch_geometric.loader import (
-    NeighborLoader,
-    GraphSAINTEdgeSampler,
-    NodeLoader,
-    DataLoader,
-)
-import torch_geometric.transforms as T
 
 import matplotlib
 from matplotlib import pyplot as plt
 from ..data.dataprocessors import prepare_data
 from ..data.dataloaders import initialize_dataloaders
-from .utils import _cycle_iterable, print_progress, EarlyStopping
+from .utils import _cycle_iterable, print_progress, EarlyStopping, get_device
 from .metrics import eval_metrics
 from .basetrainermixin import BaseMixin
 
-# from .transfer_anno import weighted_knn_trainer, weighted_knn_transfer
-
-# from torch.optim.lr_scheduler import StepLR
-# from scheduler import CosineAnnealingWarmRestarts
-# GAMMA=0.9
+# Ignore UserWarnings from PyTorch Geometric
 warnings.filterwarnings("ignore", category=UserWarning, module="torch_geometric")
 
 
@@ -169,11 +151,8 @@ class GarfieldTrainer(BaseMixin):
         self.early_stopping = EarlyStopping(**self.early_stopping_kwargs_)
 
         print("\n--- INITIALIZING TRAINER ---")
-        self.device = torch.device(
-            f"cuda:{device_id}" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = get_device(device_id)
         # self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        # seed = 2024
         random.seed(seed)
         os.environ["PYTHONHASHSEED"] = str(seed)
         np.random.seed(seed)
@@ -611,7 +590,7 @@ class GarfieldTrainer(BaseMixin):
         Returns
         ----------
         stop_training:
-            If `True`, stop NicheCompass model training.
+            If `True`, stop Garfield model training.
         """
         early_stopping_metric = self.early_stopping.early_stopping_metric
         current_metric = self.epoch_logs[early_stopping_metric][-1]

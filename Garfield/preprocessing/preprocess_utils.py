@@ -232,8 +232,7 @@ def preprocessing_atac(
             )
             adata.layers["norm_data"] = adata.X.copy()
         else:
-            sc.pp.normalize_per_cell(adata, counts_per_cell_after=1e4)
-            # sc.pp.normalize_total(adata)
+            sc.pp.normalize_total(adata, target_sum=1e4)
             # Log1p transforming
             sc.pp.log1p(adata)
             adata.layers["norm_data"] = adata.X.copy()
