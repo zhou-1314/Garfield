@@ -14,10 +14,11 @@ To use Garfield, first install it:
 **Additional Libraries**
 
 To use Garfield, you need to install some external libraries. These include:
- - [PyTorch]
- - [PyTorch Scatter]
- - [PyTorch Sparse]
- - [bedtools]
+
+- `PyTorch <http://pytorch.org/>`_
+- `PyTorch Scatter <https://github.com/rusty1s/pytorch_scatter>`_
+- `PyTorch Sparse <https://github.com/rusty1s/pytorch_sparse>`_
+- `bedtools <https://bedtools.readthedocs.io/>`_
 
 We recommend to install the PyTorch libraries with GPU support. If you have
 CUDA, this can be done as::

@@ -5,14 +5,14 @@
 
 .. autoclass:: GATDecoder
 
-
+   
    .. automethod:: __init__
 
-
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~GATDecoder.__init__
       ~GATDecoder.add_module
       ~GATDecoder.apply
@@ -60,16 +60,18 @@
       ~GATDecoder.type
       ~GATDecoder.xpu
       ~GATDecoder.zero_grad
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~GATDecoder.T_destination
       ~GATDecoder.call_super_init
       ~GATDecoder.dump_patches
       ~GATDecoder.training
+   
+   

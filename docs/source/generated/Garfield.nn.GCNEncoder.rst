@@ -5,14 +5,14 @@
 
 .. autoclass:: GCNEncoder
 
-
+   
    .. automethod:: __init__
 
-
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~GCNEncoder.__init__
       ~GCNEncoder.add_module
       ~GCNEncoder.apply
@@ -60,16 +60,18 @@
       ~GCNEncoder.type
       ~GCNEncoder.xpu
       ~GCNEncoder.zero_grad
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~GCNEncoder.T_destination
       ~GCNEncoder.call_super_init
       ~GCNEncoder.dump_patches
       ~GCNEncoder.training
+   
+   

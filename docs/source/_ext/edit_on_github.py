@@ -37,7 +37,6 @@ def html_page_context(app, pagename, templatename, context, doctree):
             context["github_version"] = "main"
             context["conf_py_path"] = "/docs/source/"
 
-
 def setup(app):
     app.add_config_value("github_nb_repo", "", True)
     app.add_config_value("github_repo", "", True)

@@ -5,14 +5,14 @@
 
 .. autoclass:: DSBatchNorm
 
-
+   
    .. automethod:: __init__
 
-
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~DSBatchNorm.__init__
       ~DSBatchNorm.add_module
       ~DSBatchNorm.apply
@@ -62,16 +62,18 @@
       ~DSBatchNorm.type
       ~DSBatchNorm.xpu
       ~DSBatchNorm.zero_grad
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~DSBatchNorm.T_destination
       ~DSBatchNorm.call_super_init
       ~DSBatchNorm.dump_patches
       ~DSBatchNorm.training
+   
+   

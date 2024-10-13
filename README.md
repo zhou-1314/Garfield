@@ -52,7 +52,7 @@ Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/lates
   - For spatial single-modality data,
     `weight` refers to the contribution of the graph constructed from the physical spatial information,
     while (1 - weight) reflects the contribution from the molecular graph (RNA graph).
-- **graph_const_method**: Method for constructing the graph (e.g., 'mu_std', 'Radius', 'KNN', 'Squidpy').
+- **graph_const_method**: Method for constructing the graph (e.g., 'mu_std', 'Radius', 'KNN', 'Squidpy' for spatial data; and 'Scanpy' for single-cell data).
 - **genome**: Reference genome to use during preprocessing.
 - **use_gene_weight**: Whether to apply gene weights in the preprocessing step.
 - **use_top_pcs**: Whether to use the top principal components during dimensionality reduction.
@@ -67,6 +67,11 @@ Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/lates
 - **n_neighbors**: Number of neighbors to use in graph-based algorithms.
 - **metric**: Distance metric used during graph construction.
 - **svd_solver**: Solver for singular value decomposition (SVD).
+
+#### Datasets
+
+- **used_pca_feat**: Whether to use PCA or LSI features for the encoder.
+
 - **adj_key**: Key in the AnnData object that holds the adjacency matrix.
 
 #### Data Split Parameters
@@ -90,7 +95,7 @@ Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/lates
 - **drop_edge_rate**: Dropout rate applied to edges during augmentation.
 - **used_edge_weight**: Whether to use edge weights in the graph layers.
 - **used_DSBN**: Whether to use domain-specific batch normalization.
-- **conv_type**: Type of graph convolution to use ('GAT', 'GCN').
+- **conv_type**: Type of graph convolution to use ('GATv2Conv', 'GAT', 'GCN').
 - **gnn_layer**: Number of times the graph neural network (GNN) encoder is repeated in the forward pass.
 - **cluster_num**: Number of clusters for latent feature clustering.
 
@@ -109,6 +114,7 @@ Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/lates
 - **lambda_latent_contrastive_instanceloss**: Weight for the instance-level contrastive loss.
 - **lambda_latent_contrastive_clusterloss**: Weight for the cluster-level contrastive loss.
 - **lambda_gene_expr_recon**: Weight for the gene expression reconstruction loss.
+- **lambda_latent_adj_recon_loss**: Weight for the adjacency reconstruction loss.
 - **lambda_edge_recon**: Weight for the edge reconstruction loss.
 - **lambda_omics_recon_mmd_loss**: Weight for the MMD loss in omics reconstruction tasks.
 
@@ -131,6 +137,8 @@ Please refer to the [documentation](https://garfield-bio.readthedocs.io/en/lates
 - **early_stopping_kwargs**: Arguments for configuring early stopping (e.g., patience, delta).
 
 - **monitor**: Whether to print training progress.
+
+- **device_id**: Device ID for GPU training.
 
 - **seed**: Random seed for reproducibility.
 
