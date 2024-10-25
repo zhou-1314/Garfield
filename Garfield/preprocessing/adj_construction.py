@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import pandas as pd
 import os
@@ -97,10 +98,82 @@ def graph_construction(adata, mode, k, batch_key, verbose=True):
     adj_org = nx.adjacency_matrix(nx.from_dict_of_lists(graph_dict))
     return adj_org
 
+def split_into_batches(
+        shared_arr1, shared_arr2,
+        max_outward_size=5000, matching_ratio=1,
+        batching_scheme='pairwise',
+        seed=None, verbose=True
+):
+    def _split(arr, n_batches, curr_seed):
+        indices = list(np.random.RandomState(curr_seed).permutation(arr.shape[0]))
+        res = []
+        batch_size = int(len(indices) // n_batches)
+        for b in range(n_batches):
+            res.append(indices[b * batch_size:(b + 1) * batch_size])
+        res[-1].extend(indices[n_batches * batch_size:])
+        return res
+
+    # cut arr2 into batches
+    max_arr2_batch_size = int(max_outward_size * matching_ratio)
+    n_batches2 = max(1, int(shared_arr2.shape[0] // max_arr2_batch_size))
+    arr2_batch_size = int(shared_arr2.shape[0] // n_batches2)
+    batch_to_indices2 = _split(
+        arr=shared_arr2,
+        n_batches=n_batches2,
+        curr_seed=seed
+    )
+    # cut arr1 into batches
+    max_arr1_batch_size = int(arr2_batch_size // matching_ratio)
+    n_batches1 = max(1, int(shared_arr1.shape[0] // max_arr1_batch_size))
+    arr1_batch_size = int(shared_arr1.shape[0] // n_batches1)
+    if seed is not None:
+        seed = seed + 1
+    batch_to_indices1 = _split(
+        arr=shared_arr1,
+        n_batches=n_batches1,
+        curr_seed=seed
+    )
+
+    # construct mapping between batches
+    b1 = 0
+    b2 = 0
+    batch1_to_batch2 = []
+    if batching_scheme == 'cyclic':
+        for i in range(max(n_batches1, n_batches2)):
+            batch1_to_batch2.append((b1, b2))
+            b1 = (b1 + 1) % n_batches1
+            b2 = (b2 + 1) % n_batches2
+    elif batching_scheme == 'pairwise':
+        for b1 in range(n_batches1):
+            for b2 in range(n_batches2):
+                batch1_to_batch2.append((b1, b2))
+
+    if verbose:
+        print(('The first data is split into {} batches, '
+               'average batch size is {}, and max batch size is {}.').format(
+            n_batches1, arr1_batch_size, len(batch_to_indices1[-1])
+        ), flush=True)
+        print(('The second data is split into {} batches, '
+               'average batch size is {}, and max batch size is {}.').format(
+            n_batches2, arr2_batch_size, len(batch_to_indices2[-1])
+        ), flush=True)
+        print('Batch to batch correspondence is:\n  {}.'.format(
+            [str(i) + '<->' + str(j) for i, j in batch1_to_batch2]
+        ), flush=True)
+
+    if arr1_batch_size <= 1000:
+        warnings.warn('Batch size for arr1 is <= 1000: '
+                      'consider setting a smaller matching ratio for better performance.')
+
+    return batch_to_indices1, batch_to_indices2, batch1_to_batch2
 
 def find_initial_pivots(
     arr1,
     arr2,
+    max_outward_size=5000,
+    matching_ratio=1,
+    batching_scheme='pairwise',
+    seed=None,
     svd_components1=None,
     svd_components2=None,
     randomized_svd=False,
@@ -128,27 +201,71 @@ def find_initial_pivots(
     None
     """
     init_matching = []
-    init_matching.append(
-        get_initial_matching(
-            arr1=arr1,
-            arr2=arr2,
-            randomized_svd=randomized_svd,
-            svd_runs=svd_runs,
-            svd_components1=svd_components1,
-            svd_components2=svd_components2,
-            verbose=False,
-        )
-    )
+    arr1 = utils.convert_to_numpy(arr1)
+    arr2 = utils.convert_to_numpy(arr2)
 
-    if verbose:
-        print("Init_matching done!", flush=True)
-    return init_matching
+    if arr1.shape[0] < 10000 and arr2.shape[0] < 10000:
+        # 不进行minibatch划分
+        init_matching.append(
+            get_initial_matching(
+                arr1=arr1,
+                arr2=arr2,
+                randomized_svd=randomized_svd,
+                svd_runs=svd_runs,
+                svd_components1=svd_components1,
+                svd_components2=svd_components2,
+                verbose=False,
+            )
+        )
+
+        if verbose:
+            print("Init_matching done!", flush=True)
+        return init_matching
+    else:
+        # divide minibatch
+        batch_to_indices1, batch_to_indices2, batch1_to_batch2 = split_into_batches(
+            arr1, arr2,
+            max_outward_size=max_outward_size,
+            matching_ratio=matching_ratio,
+            batching_scheme=batching_scheme,
+            seed=seed,
+            verbose=verbose
+        )
+
+        for b1, b2 in batch1_to_batch2:
+            if verbose:
+                print(
+                    'Now at batch {}<->{}...'.format(b1, b2),
+                    flush=True
+                )
+            arr1_batch = arr1[batch_to_indices1[b1], :]
+            arr2_batch = arr2[batch_to_indices2[b2], :]
+
+            init_matching.append(
+                get_initial_matching(
+                    arr1=arr1_batch,
+                    arr2=arr2_batch,
+                    randomized_svd=randomized_svd,
+                    svd_runs=svd_runs,
+                    svd_components1=svd_components1,
+                    svd_components2=svd_components2,
+                    verbose=False,
+                )
+            )
+
+        if verbose:
+            print("Init_matching done!", flush=True)
+        return init_matching
 
 
 def refine_pivots(
     init_matching,
     arr1,
     arr2,
+    max_outward_size=5000,
+    matching_ratio=1,
+    batching_scheme='pairwise',
+    seed=None,
     svd_components1=None,
     svd_components2=None,
     cca_components=None,
@@ -160,26 +277,71 @@ def refine_pivots(
     verbose=True,
 ):
     refined_matching = []
-    refined_matching.append(
-        get_refined_matching(
-            init_matching=init_matching,
-            arr1=arr1,
-            arr2=arr2,
-            randomized_svd=randomized_svd,
-            svd_runs=svd_runs,
-            svd_components1=svd_components1,
-            svd_components2=svd_components2,
-            n_iters=n_iters,
-            filter_prop=filter_prop,
-            cca_components=cca_components,
-            cca_max_iter=cca_max_iter,
-            verbose=False,
-        )
-    )
+    arr1 = utils.convert_to_numpy(arr1)
+    arr2 = utils.convert_to_numpy(arr2)
 
-    if verbose:
-        print("Refined_matching done!", flush=True)
-    return refined_matching
+    if arr1.shape[0] < 10000 and arr2.shape[0] < 10000:
+        # 不进行minibatch划分
+        refined_matching.append(
+            get_refined_matching(
+                init_matching=init_matching[0],
+                arr1=arr1,
+                arr2=arr2,
+                randomized_svd=randomized_svd,
+                svd_runs=svd_runs,
+                svd_components1=svd_components1,
+                svd_components2=svd_components2,
+                n_iters=n_iters,
+                filter_prop=filter_prop,
+                cca_components=cca_components,
+                cca_max_iter=cca_max_iter,
+                verbose=False,
+            )
+        )
+
+        if verbose:
+            print("Refined_matching done!", flush=True)
+        return refined_matching
+    else:
+        # divide minibatch
+        batch_to_indices1, batch_to_indices2, batch1_to_batch2 = split_into_batches(
+            arr1, arr2,
+            max_outward_size=max_outward_size,
+            matching_ratio=matching_ratio,
+            batching_scheme=batching_scheme,
+            seed=seed,
+            verbose=False
+        )
+
+        for batch_idx, (b1, b2) in enumerate(batch1_to_batch2):
+            if verbose:
+                print(
+                    'Now at batch {}<->{}...'.format(b1, b2),
+                    flush=True
+                )
+            arr1_batch = arr1[batch_to_indices1[b1], :]
+            arr2_batch = arr2[batch_to_indices2[b2], :]
+
+            refined_matching.append(
+                get_refined_matching(
+                    init_matching=init_matching[batch_idx],
+                    arr1=arr1_batch,
+                    arr2=arr2_batch,
+                    randomized_svd=randomized_svd,
+                    svd_runs=svd_runs,
+                    svd_components1=svd_components1,
+                    svd_components2=svd_components2,
+                    n_iters=n_iters,
+                    filter_prop=filter_prop,
+                    cca_components=cca_components,
+                    cca_max_iter=cca_max_iter,
+                    verbose=False,
+                )
+            )
+
+        if verbose:
+            print("Refined_matching done!", flush=True)
+        return refined_matching
 
 
 def filter_bad_matches(
@@ -188,6 +350,10 @@ def filter_bad_matches(
     refined_matching=None,
     propagated_matching=None,
     target="pivot",
+    max_outward_size=5000,
+    matching_ratio=1,
+    batching_scheme='pairwise',
+    seed=None,
     filter_prop=0.0,
     randomized_svd=False,
     svd_runs=1,
@@ -213,21 +379,43 @@ def filter_bad_matches(
     remaining_indices_after_filtering = []
     idx2_to_indices1 = defaultdict(set)
     # record the locations that survive the filtering
-    rows, cols, vals = matching_to_be_filtered[0]
-    # anything with val <= thresh will be retained
-    thresh = np.quantile(vals, 1 - filter_prop)
-    remaining_indices_after_filtering.append(
-        [i for i in range(len(vals)) if vals[i] <= thresh]
-    )
-    n_remaining += len(remaining_indices_after_filtering[0])
-    for i in remaining_indices_after_filtering[0]:
-        idx1, idx2 = rows[i], cols[i]
-        idx2_to_indices1[idx2].add(idx1)
-
-    if target == "pivot":
-        remaining_indices_in_refined_matching = remaining_indices_after_filtering[0]
+    if arr1.shape[0] < 10000 and arr2.shape[0] < 10000:
+        rows, cols, vals = matching_to_be_filtered[0]
+        # anything with val <= thresh will be retained
+        thresh = np.quantile(vals, 1 - filter_prop)
+        remaining_indices_after_filtering.append(
+            [i for i in range(len(vals)) if vals[i] <= thresh]
+        )
+        n_remaining += len(remaining_indices_after_filtering[0])
+        for i in remaining_indices_after_filtering[0]:
+            idx1, idx2 = rows[i], cols[i]
+            idx2_to_indices1[idx2].add(idx1)
     else:
-        remaining_indices_in_propagated_matching = remaining_indices_after_filtering[0]
+        # divide minibatch
+        _, _, batch1_to_batch2 = split_into_batches(
+            arr1, arr2,
+            max_outward_size=max_outward_size,
+            matching_ratio=matching_ratio,
+            batching_scheme=batching_scheme,
+            seed=seed,
+            verbose=False
+        )
+        for batch_idx, (b1, b2) in enumerate(batch1_to_batch2):
+            rows, cols, vals = matching_to_be_filtered[batch_idx]
+            # anything with val <= thresh will be retained
+            thresh = np.quantile(vals, 1 - filter_prop)
+            remaining_indices_after_filtering.append(
+                [i for i in range(len(vals)) if vals[i] <= thresh]
+            )
+            n_remaining += len(remaining_indices_after_filtering[batch_idx])
+            for i in remaining_indices_after_filtering[batch_idx]:
+                idx1, idx2 = rows[i], cols[i]
+                idx2_to_indices1[idx2].add(idx1)
+
+    # if target == "pivot":
+    #     remaining_indices_in_refined_matching = remaining_indices_after_filtering #[0]
+    # else:
+    #     remaining_indices_in_propagated_matching = remaining_indices_after_filtering #[0]
 
     if verbose:
         print(
@@ -307,9 +495,11 @@ def filter_bad_matches(
 
     if target == "pivot":
         pivot2_to_pivots1 = idx2_to_indices1
+        remaining_indices_in_refined_matching = remaining_indices_after_filtering
         return pivot2_to_pivots1, remaining_indices_in_refined_matching
     else:
         propidx2_to_propindices1 = idx2_to_indices1
+        remaining_indices_in_propagated_matching = remaining_indices_after_filtering
         return propidx2_to_propindices1, remaining_indices_in_propagated_matching
 
 
@@ -320,6 +510,10 @@ def propagate(
     arr2=None,
     svd_components1=None,
     svd_components2=None,
+    max_outward_size=5000,
+    matching_ratio=1,
+    batching_scheme='pairwise',
+    seed=None,
     metric="euclidean",
     randomized_svd=False,
     svd_runs=1,
@@ -354,66 +548,143 @@ def propagate(
     None
     """
     propagated_matching = []
-    curr_propagated_matching = [[], [], []]
-    curr_refined_matching = refined_matching
-    # get good pivot indices that survived pivot filtering
-    existing_indices = curr_refined_matching[0][remaining_indices_in_refined_matching]
-    good_indices1 = curr_refined_matching[0][existing_indices]
-    good_indices2 = curr_refined_matching[1][existing_indices]
+    if arr1.shape[0] < 10000 and arr2.shape[0] < 10000:
+        curr_propagated_matching = [[], [], []]
+        curr_refined_matching = refined_matching[0]
+        # get good pivot indices that survived pivot filtering
+        existing_indices = curr_refined_matching[0][remaining_indices_in_refined_matching[0]]
+        good_indices1 = curr_refined_matching[0][existing_indices]
+        good_indices2 = curr_refined_matching[1][existing_indices]
 
-    # get arrays that were used when doing refined matching
-    # get remaining indices
-    # propagation will only be done for those indices
-    good_indices1_set = set(good_indices1)
-    remaining_indices1 = [i for i in range(arr1.shape[0]) if i not in good_indices1_set]
-    good_indices2_set = set(good_indices2)
-    remaining_indices2 = [i for i in range(arr2.shape[0]) if i not in good_indices2_set]
+        # get arrays that were used when doing refined matching
+        # get remaining indices
+        # propagation will only be done for those indices
+        good_indices1_set = set(good_indices1)
+        remaining_indices1 = [i for i in range(arr1.shape[0]) if i not in good_indices1_set]
+        good_indices2_set = set(good_indices2)
+        remaining_indices2 = [i for i in range(arr2.shape[0]) if i not in good_indices2_set]
 
-    # propagate for remaining indices in arr1
-    if len(remaining_indices1) > 0:
-        # get 1-nearest-neighbors and the corresponding distances
-        (
-            remaining_indices1_nns,
-            remaining_indices1_nn_dists,
-        ) = graph.get_nearest_neighbors(
-            query_arr=arr1[remaining_indices1, :],
-            target_arr=arr1[good_indices1, :],
-            svd_components=svd_components1,
-            randomized_svd=randomized_svd,
-            svd_runs=svd_runs,
-            metric=metric,
+        # propagate for remaining indices in arr1
+        if len(remaining_indices1) > 0:
+            # get 1-nearest-neighbors and the corresponding distances
+            (
+                remaining_indices1_nns,
+                remaining_indices1_nn_dists,
+            ) = graph.get_nearest_neighbors(
+                query_arr=arr1[remaining_indices1, :],
+                target_arr=arr1[good_indices1, :],
+                svd_components=svd_components1,
+                randomized_svd=randomized_svd,
+                svd_runs=svd_runs,
+                metric=metric,
+            )
+            matched_indices2 = good_indices2[remaining_indices1_nns]
+            curr_propagated_matching[0].extend(remaining_indices1)
+            curr_propagated_matching[1].extend(matched_indices2)
+            curr_propagated_matching[2].extend(remaining_indices1_nn_dists)
+
+        # propagate for remaining indices in arr2
+        if len(remaining_indices2) > 0:
+            # get 1-nearest-neighbors and the corresponding distances
+            (
+                remaining_indices2_nns,
+                remaining_indices2_nn_dists,
+            ) = graph.get_nearest_neighbors(
+                query_arr=arr2[remaining_indices2, :],
+                target_arr=arr2[good_indices2, :],
+                svd_components=svd_components2,
+                randomized_svd=randomized_svd,
+                svd_runs=svd_runs,
+                metric=metric,
+            )
+            matched_indices1 = good_indices1[remaining_indices2_nns]
+            curr_propagated_matching[0].extend(matched_indices1)
+            curr_propagated_matching[1].extend(remaining_indices2)
+            curr_propagated_matching[2].extend(remaining_indices2_nn_dists)
+
+        propagated_matching.append(
+            (
+                np.array(curr_propagated_matching[0]),
+                np.array(curr_propagated_matching[1]),
+                np.array(curr_propagated_matching[2]),
+            )
         )
-        matched_indices2 = good_indices2[remaining_indices1_nns]
-        curr_propagated_matching[0].extend(remaining_indices1)
-        curr_propagated_matching[1].extend(matched_indices2)
-        curr_propagated_matching[2].extend(remaining_indices1_nn_dists)
-
-    # propagate for remaining indices in arr2
-    if len(remaining_indices2) > 0:
-        # get 1-nearest-neighbors and the corresponding distances
-        (
-            remaining_indices2_nns,
-            remaining_indices2_nn_dists,
-        ) = graph.get_nearest_neighbors(
-            query_arr=arr2[remaining_indices2, :],
-            target_arr=arr2[good_indices2, :],
-            svd_components=svd_components2,
-            randomized_svd=randomized_svd,
-            svd_runs=svd_runs,
-            metric=metric,
+    else:
+        # divide minibatch
+        _, _, batch1_to_batch2 = split_into_batches(
+            arr1, arr2,
+            max_outward_size=max_outward_size,
+            matching_ratio=matching_ratio,
+            batching_scheme=batching_scheme,
+            seed=seed,
+            verbose=False
         )
-        matched_indices1 = good_indices1[remaining_indices2_nns]
-        curr_propagated_matching[0].extend(matched_indices1)
-        curr_propagated_matching[1].extend(remaining_indices2)
-        curr_propagated_matching[2].extend(remaining_indices2_nn_dists)
+        for batch_idx, (b1, b2) in enumerate(batch1_to_batch2):
+            if verbose:
+                print(
+                    'Now at batch {}<->{}...'.format(b1, b2),
+                    flush=True
+                )
+            curr_propagated_matching = [[], [], []]
+            curr_refined_matching = refined_matching[batch_idx]
+            # get good pivot indices that survived pivot filtering
+            existing_indices = curr_refined_matching[0][remaining_indices_in_refined_matching[batch_idx]]
+            good_indices1 = curr_refined_matching[0][existing_indices]
+            good_indices2 = curr_refined_matching[1][existing_indices]
 
-    propagated_matching.append(
-        (
-            np.array(curr_propagated_matching[0]),
-            np.array(curr_propagated_matching[1]),
-            np.array(curr_propagated_matching[2]),
-        )
-    )
+            # get arrays that were used when doing refined matching
+            # get remaining indices
+            # propagation will only be done for those indices
+            good_indices1_set = set(good_indices1)
+            remaining_indices1 = [i for i in range(arr1.shape[0]) if i not in good_indices1_set]
+            good_indices2_set = set(good_indices2)
+            remaining_indices2 = [i for i in range(arr2.shape[0]) if i not in good_indices2_set]
+
+            # propagate for remaining indices in arr1
+            if len(remaining_indices1) > 0:
+                # get 1-nearest-neighbors and the corresponding distances
+                (
+                    remaining_indices1_nns,
+                    remaining_indices1_nn_dists,
+                ) = graph.get_nearest_neighbors(
+                    query_arr=arr1[remaining_indices1, :],
+                    target_arr=arr1[good_indices1, :],
+                    svd_components=svd_components1,
+                    randomized_svd=randomized_svd,
+                    svd_runs=svd_runs,
+                    metric=metric,
+                )
+                matched_indices2 = good_indices2[remaining_indices1_nns]
+                curr_propagated_matching[0].extend(remaining_indices1)
+                curr_propagated_matching[1].extend(matched_indices2)
+                curr_propagated_matching[2].extend(remaining_indices1_nn_dists)
+
+            # propagate for remaining indices in arr2
+            if len(remaining_indices2) > 0:
+                # get 1-nearest-neighbors and the corresponding distances
+                (
+                    remaining_indices2_nns,
+                    remaining_indices2_nn_dists,
+                ) = graph.get_nearest_neighbors(
+                    query_arr=arr2[remaining_indices2, :],
+                    target_arr=arr2[good_indices2, :],
+                    svd_components=svd_components2,
+                    randomized_svd=randomized_svd,
+                    svd_runs=svd_runs,
+                    metric=metric,
+                )
+                matched_indices1 = good_indices1[remaining_indices2_nns]
+                curr_propagated_matching[0].extend(matched_indices1)
+                curr_propagated_matching[1].extend(remaining_indices2)
+                curr_propagated_matching[2].extend(remaining_indices2_nn_dists)
+
+            propagated_matching.append(
+                (
+                    np.array(curr_propagated_matching[0]),
+                    np.array(curr_propagated_matching[1]),
+                    np.array(curr_propagated_matching[2]),
+                )
+            )
 
     if verbose:
         print("Done!", flush=True)
@@ -533,6 +804,10 @@ def create_adj(
     rna_n_top_features=3000,
     atac_n_top_features=10000,
     batch_key=None,
+    max_outward_size=5000,
+    matching_ratio=1,
+    batching_scheme='cyclic', # cyclic or pairwise
+    seed=None,
     svd_components1=30,
     svd_components2=30,
     cca_components=20,
@@ -548,21 +823,25 @@ def create_adj(
 
     # Finding initial pivots on all genes or peaks
     # 统计计算时间
-    import time
-
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
+    print("Finding initial pivots...")
     initial_pivots = find_initial_pivots(
         rna_adata_shared.X,
         atac_adata_shared.X,
+        max_outward_size=max_outward_size,
+        matching_ratio=matching_ratio,
+        batching_scheme=batching_scheme,
+        seed=seed,
         svd_components1=svd_components1,
         svd_components2=svd_components2,
         randomized_svd=randomized_svd,
         svd_runs=svd_runs,
         verbose=verbose,
     )
-    print(
-        "Finding initial pivots costs {:.2f} seconds.".format(time.time() - start_time)
-    )
+    # print(
+    #     "Finding initial pivots costs {:.2f} seconds.".format(time.time() - start_time)
+    # )
 
     # Finding variable features for RNA adata
     if type(rna_n_top_features) == int:
@@ -607,10 +886,15 @@ def create_adj(
         atac = reindex(atac, atac_n_top_features)
 
     # Refining pivots
+    print("Refining pivots...")
     fine_pivots = refine_pivots(
-        initial_pivots[0],
+        initial_pivots,
         rna.X,
         atac.X,
+        max_outward_size=max_outward_size,
+        matching_ratio=matching_ratio,
+        batching_scheme=batching_scheme,
+        seed=seed,
         svd_components1=svd_components1,
         svd_components2=svd_components2,
         cca_components=cca_components,
@@ -630,6 +914,10 @@ def create_adj(
         refined_matching=fine_pivots,
         target="pivot",
         filter_prop=filter_prop_refined,
+        max_outward_size=max_outward_size,
+        matching_ratio=matching_ratio,
+        batching_scheme=batching_scheme,
+        seed=seed,
         randomized_svd=randomized_svd,
         svd_runs=svd_runs,
         svd_components1=svd_components1,
@@ -640,11 +928,16 @@ def create_adj(
     )
 
     # Propagating matching
+    print("Propagating matching...")
     propagated_matching = propagate(
-        refined_matching=fine_pivots[0],
+        refined_matching=fine_pivots,
         remaining_indices_in_refined_matching=remaining_indices_in_refined_matching,
         arr1=rna.X,
         arr2=atac.X,
+        max_outward_size=max_outward_size,
+        matching_ratio=matching_ratio,
+        batching_scheme=batching_scheme,
+        seed=seed,
         svd_components1=svd_components1,
         svd_components2=svd_components2,
         metric="euclidean",
@@ -665,6 +958,10 @@ def create_adj(
         target="propagated",
         filter_prop=filter_prop_propagated,
         randomized_svd=randomized_svd,
+        max_outward_size=max_outward_size,
+        matching_ratio=matching_ratio,
+        batching_scheme=batching_scheme,
+        seed=seed,
         svd_runs=svd_runs,
         svd_components1=svd_components1,
         svd_components2=svd_components2,

@@ -284,9 +284,9 @@ class GATEncoder(nn.Module):
         """
         for idx, layer in enumerate(self.layers):
             x, _ = layer(
-                x,
+                x.float(),
                 edge_index,
-                edge_attr=edge_weight if self.used_edge_weight else None,
+                edge_attr=edge_weight.float() if self.used_edge_weight else None,
                 return_attention_weights=True,
             )
             if self.used_DSBN and len(x) > 1:
@@ -298,15 +298,15 @@ class GATEncoder(nn.Module):
             x = F.relu(x)
 
         z_mean, _ = self.conv_mean(
-            x,
+            x.float(),
             edge_index,
-            edge_attr=edge_weight if self.used_edge_weight else None,
+            edge_attr=edge_weight.float() if self.used_edge_weight else None,
             return_attention_weights=True,
         )
         z_log_std, _ = self.conv_log_std(
-            x,
+            x.float(),
             edge_index,
-            edge_attr=edge_weight if self.used_edge_weight else None,
+            edge_attr=edge_weight.float() if self.used_edge_weight else None,
             return_attention_weights=True,
         )
 
