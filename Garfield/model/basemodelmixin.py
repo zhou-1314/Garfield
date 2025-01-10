@@ -16,7 +16,7 @@ import scipy.sparse as sp
 import torch
 from anndata import AnnData
 
-from .utils import load_saved_files, save_model_with_fallback
+from .utils import load_saved_files, save_model_with_fallback, validate_var_names
 
 
 class BaseModelMixin:
@@ -112,6 +112,97 @@ class BaseModelMixin:
         #     pickle.dump(public_attributes, f)
 
     @classmethod
+    def load(cls,
+             dir_path: str,
+             query_adata: Optional[AnnData] = None,
+             adata_file_name: str = "adata_ref.h5ad",
+             use_cuda: bool = True,
+             unfreeze_all_weights: bool = False,
+             unfreeze_eps_weight: bool = False,
+             unfreeze_layer0: bool = False,
+             **kwargs,
+             ) -> torch.nn.Module:
+        """
+        Instantiate a model from saved output.
+
+        Parameters
+        ----------
+        dir_path:
+            Path to saved outputs.
+        query_adata:
+            AnnData organized in the same way as data used to train the model.
+            If ´None´, will check for and load adata saved with the model.
+        adata_file_name:
+            File name of the AnnData object to be loaded.
+        use_cuda:
+            If `True`, load model on GPU.
+        unfreeze_all_weights:
+            If `True`, unfreeze all weights.
+        unfreeze_eps_weight:
+            If `True`, unfreeze eps weights.
+        unfreeze_layer0:
+            If `True`, unfreeze layer 0 weights.
+
+        Returns
+        -------
+        model:
+            Model with loaded state dictionaries and, if specified, frozen non
+            add-on weights.
+        """
+        use_cuda = use_cuda and torch.cuda.is_available()
+        map_location = torch.device("cpu") if use_cuda is False else None
+
+        model_state_dict, var_names, attr_dict, new_adata = (
+            load_saved_files(dir_path=dir_path,
+                             query_adata=query_adata,
+                             ref_adata_name=adata_file_name,
+                             map_location=map_location))
+
+        validate_var_names(new_adata, var_names)
+
+        init_params = deepcopy(cls._get_init_params_from_dict(attr_dict))
+        # don't preprocess the data
+        init_params["min_features"] = 0
+        init_params["adata_list"] = new_adata
+        init_params.update(kwargs)
+
+        # model = initialize_model(cls, init_params)
+        model = cls(init_params)
+
+        # set saved attrs for loaded model
+        for attr, val in init_params.items():
+            setattr(model, attr, val)
+
+        # TODO 可能缺少了 batch normalization的层参数，当 used_DSBN=False 时
+        model.model.load_state_dict(model_state_dict, strict=False)
+
+        if use_cuda:
+            model.model.cuda()
+        model.model.eval()
+
+        # First freeze all parameters and then subsequently unfreeze based on
+        # load settings
+        for param_name, param in model.model.named_parameters():
+            param.requires_grad = False
+            model.freeze_ = True
+        if unfreeze_all_weights:
+            for param_name, param in model.model.named_parameters():
+                param.requires_grad = True
+            model.freeze_ = False
+        if unfreeze_eps_weight:
+            # allow updates of eps_weight
+            for param_name, param in model.model.named_parameters():
+                if "eps_weight" in param_name or "eps_bias" in param_name:
+                    param.requires_grad = True
+        if unfreeze_layer0:
+            # Allow updates of the first embedder weights
+            for param_name, param in model.model.named_parameters():
+                if ("layers.0" in param_name) or ("norm.0" in param_name):
+                    param.requires_grad = True
+
+        return model
+
+    @classmethod
     def load_query_data(
         cls,
         dir_path: str,
@@ -132,15 +223,19 @@ class BaseModelMixin:
         ----------
         dir_path:
             Path to saved outputs.
-        adata:
+        query_adata:
             AnnData organized in the same way as data used to train the model.
             If ´None´, will check for and load adata saved with the model.
-        adata_file_name:
+        ref_adata_name:
             File name of the AnnData object to be loaded.
         use_cuda:
             If `True`, load model on GPU.
         unfreeze_all_weights:
             If `True`, unfreeze all weights.
+        unfreeze_eps_weight:
+            If `True`, unfreeze eps weights.
+        unfreeze_layer0:
+            If `True`, unfreeze layer 0 weights.
 
         Returns
         -------

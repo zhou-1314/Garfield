@@ -23,6 +23,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def determine_species(adata):
+    # 提取基因名的前几个字符，进行大写比例判断
+    genes = adata.var_names[:100]  # 可以调整样本数，例如前100个基因
+    human_like = sum(1 for gene in genes if gene.isupper())
+    mouse_like = sum(1 for gene in genes if gene[0].isupper() and gene[1:].islower())
+
+    if human_like > mouse_like:
+        return "human"
+    elif mouse_like > human_like:
+        return "mouse"
+    else:
+        return "unknown"
+
 def reindex(adata, genes):
     """
     Reindex AnnData with gene list

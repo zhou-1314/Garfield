@@ -9,6 +9,11 @@ import dill
 from collections import OrderedDict
 from typing import Optional, Tuple, Literal
 
+from collections import defaultdict
+import scipy.sparse as sp
+from scipy.sparse import isspmatrix_csr
+from sklearn.preprocessing import normalize
+
 import numpy as np
 import pandas as pd
 import torch
@@ -18,6 +23,9 @@ import anndata as ad
 from anndata import AnnData, concat
 from scipy.sparse import csr_matrix, hstack
 from sklearn.neighbors import KNeighborsTransformer
+
+import matplotlib
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +126,9 @@ def load_saved_files(
             index_unique=None,
             join="outer",
         )
+        del adata_concat.obsm['garfield_latent'] # remove garfield_latent
     else:
-        adata_concat = None
+        adata_concat = adata_ref
 
     model_state_dict = torch.load(model_path, map_location=map_location)
     attr_dict = load_model_with_fallback(attr_path)
@@ -320,3 +329,5 @@ def weighted_knn_transfer(
     print("Label transfer finished!", flush=True)
 
     return pred_labels, uncertainties
+
+

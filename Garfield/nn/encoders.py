@@ -217,7 +217,8 @@ class GATEncoder(nn.Module):
                     values=edge_weight,
                     size=(num_nodes, num_nodes),
                 )
-                u, s, v = torch.svd_lowrank(sparse_adj, q=self.svd_q)
+                q = min(self.svd_q, sparse_adj.shape[1])  # 确保 q <= 矩阵的列数
+                u, s, v = torch.svd_lowrank(sparse_adj, q=q)
                 recon_adj = (u @ torch.diag(s)) @ v.T
                 sparse_adj = recon_adj.to_sparse()
                 edge_index_aug = sparse_adj.indices()
@@ -454,7 +455,8 @@ class GCNEncoder(nn.Module):
                     values=edge_weight,
                     size=(num_nodes, num_nodes),
                 )
-                u, s, v = torch.svd_lowrank(sparse_adj, q=self.svd_q)
+                q = min(self.svd_q, sparse_adj.shape[1])  # 确保 q <= 矩阵的列数
+                u, s, v = torch.svd_lowrank(sparse_adj, q=q)
                 recon_adj = (u @ torch.diag(s)) @ v.T
                 sparse_adj = recon_adj.to_sparse()
                 edge_index_aug = sparse_adj.indices()

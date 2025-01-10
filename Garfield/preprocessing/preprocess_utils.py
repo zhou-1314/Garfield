@@ -16,7 +16,7 @@ from scipy.sparse import issparse, csr
 from sklearn.preprocessing import MaxAbsScaler
 
 # from ._pca import select_pcs_features
-from ._utils import reindex, gene_scores, TFIDF_LSI, clr_normalize_each_cell
+from ._utils import reindex, gene_scores, TFIDF_LSI, clr_normalize_each_cell, determine_species
 from .adj_construction import create_adj, graph_construction
 
 CHUNK_SIZE = 20000
@@ -715,24 +715,39 @@ def preprocessing(
                     "Garfield", "data/gene_anno/protein_gene_conversion.csv"
                 )
                 correspondence = pd.read_csv(
-                    io.BytesIO(correspondence), encoding="utf8"
+                    io.BytesIO(correspondence), encoding="utf8", index_col=0
                 )
 
                 rna_protein_correspondence = []
                 for i in range(correspondence.shape[0]):
-                    curr_protein_name, curr_rna_names = correspondence.iloc[i]
-                    if curr_protein_name not in adt_adata_hvg.var_names:
-                        continue
-                    if (
-                        curr_rna_names.find("Ignore") != -1
-                    ):  # some correspondence ignored eg. protein isoform to one gene
-                        continue
-                    curr_rna_names = curr_rna_names.split(
-                        "/"
-                    )  # eg. one protein to multiple genes
-                    for r in curr_rna_names:
-                        if r in rna_adata_hvg.var_names:
-                            rna_protein_correspondence.append([r, curr_protein_name])
+                    curr_protein_name, curr_rna_names_human, curr_rna_names_mouse = correspondence.iloc[i]
+
+                    if determine_species(rna_adata) == "human":
+                        if curr_protein_name not in adt_adata_hvg.var_names:
+                            continue
+                        if (
+                            curr_rna_names_human.find("Ignore") != -1
+                        ):  # some correspondence ignored eg. protein isoform to one gene
+                            continue
+                        curr_rna_names_human = curr_rna_names_human.split(
+                            "/"
+                        )  # eg. one protein to multiple genes
+                        for r in curr_rna_names_human:
+                            if r in rna_adata_hvg.var_names:
+                                rna_protein_correspondence.append([r, curr_protein_name])
+                    elif determine_species(rna_adata) == "mouse":
+                        if curr_protein_name not in adt_adata_hvg.var_names:
+                            continue
+                        if (
+                            curr_rna_names_mouse.find("Ignore") != -1
+                        ):  # some correspondence ignored eg. protein isoform to one gene
+                            continue
+                        curr_rna_names_mouse = curr_rna_names_mouse.split(
+                            "/"
+                        )  # eg. one protein to multiple genes
+                        for r in curr_rna_names_mouse:
+                            if r in rna_adata_hvg.var_names:
+                                rna_protein_correspondence.append([r, curr_protein_name])
                 rna_protein_correspondence = np.array(rna_protein_correspondence)
 
                 ## Concatenating different modalities
@@ -761,14 +776,26 @@ def preprocessing(
                 )
 
                 ## 交集
-                # common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
-                print(
-                    "There are {} common genes in RNA and ADT datasets".format(
-                        rna_protein_correspondence.shape[0]
+                # 如果 adt_adata.var_names 全为大写，则直接取交集
+                if all([x.isupper() for x in adt_adata.var_names]):
+                    common_genes = set(rna_adata.var_names).intersection(
+                        set(adt_adata.var_names)
                     )
-                )
-                rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
-                adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
+                    print(
+                        "There are {} common genes in RNA and ADT datasets".format(
+                            len(common_genes)
+                        )
+                    )
+                    rna_adata_shared = rna_adata[:, list(common_genes)].copy()
+                    adt_adata_shared = adt_adata[:, list(common_genes)].copy()
+                else:
+                    print(
+                        "There are {} common genes in RNA and ADT datasets".format(
+                            rna_protein_correspondence.shape[0]
+                        )
+                    )
+                    rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
+                    adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
 
                 ## 通过cell matching 构建组学间的图结构
                 print(
@@ -958,7 +985,7 @@ def preprocessing(
                 )
 
                 ## 先将 scATAC 转换为基因活性矩阵
-                if len(atac_adata.var_names) > 50000:
+                if atac_adata.var_names[0].startswith('chr'):
                     adata_CG_atac = save_adata_atac(
                         atac_adata,
                         genome=genome,
@@ -1076,24 +1103,39 @@ def preprocessing(
                     "Garfield", "data/gene_anno/protein_gene_conversion.csv"
                 )
                 correspondence = pd.read_csv(
-                    io.BytesIO(correspondence), encoding="utf8"
+                    io.BytesIO(correspondence), encoding="utf8", index_col=0
                 )
 
                 rna_protein_correspondence = []
                 for i in range(correspondence.shape[0]):
-                    curr_protein_name, curr_rna_names = correspondence.iloc[i]
-                    if curr_protein_name not in adt_adata_hvg.var_names:
-                        continue
-                    if (
-                        curr_rna_names.find("Ignore") != -1
-                    ):  # some correspondence ignored eg. protein isoform to one gene
-                        continue
-                    curr_rna_names = curr_rna_names.split(
-                        "/"
-                    )  # eg. one protein to multiple genes
-                    for r in curr_rna_names:
-                        if r in rna_adata_hvg.var_names:
-                            rna_protein_correspondence.append([r, curr_protein_name])
+                    curr_protein_name, curr_rna_names_human, curr_rna_names_mouse = correspondence.iloc[i]
+
+                    if determine_species(rna_adata) == "human":
+                        if curr_protein_name not in adt_adata_hvg.var_names:
+                            continue
+                        if (
+                                curr_rna_names_human.find("Ignore") != -1
+                        ):  # some correspondence ignored eg. protein isoform to one gene
+                            continue
+                        curr_rna_names_human = curr_rna_names_human.split(
+                            "/"
+                        )  # eg. one protein to multiple genes
+                        for r in curr_rna_names_human:
+                            if r in rna_adata_hvg.var_names:
+                                rna_protein_correspondence.append([r, curr_protein_name])
+                    elif determine_species(rna_adata) == "mouse":
+                        if curr_protein_name not in adt_adata_hvg.var_names:
+                            continue
+                        if (
+                                curr_rna_names_mouse.find("Ignore") != -1
+                        ):  # some correspondence ignored eg. protein isoform to one gene
+                            continue
+                        curr_rna_names_mouse = curr_rna_names_mouse.split(
+                            "/"
+                        )  # eg. one protein to multiple genes
+                        for r in curr_rna_names_mouse:
+                            if r in rna_adata_hvg.var_names:
+                                rna_protein_correspondence.append([r, curr_protein_name])
                 rna_protein_correspondence = np.array(rna_protein_correspondence)
 
                 ## Concatenating different modalities
@@ -1123,14 +1165,26 @@ def preprocessing(
                 )
 
                 ## 交集
-                # common_genes = set(rna_adata.var_names).intersection(set(adt_adata.var_names))
-                print(
-                    "There are {} common genes in RNA and ADT datasets".format(
-                        rna_protein_correspondence.shape[0]
+                # 如果 adt_adata.var_names 全为大写，则直接取交集
+                if all([x.isupper() for x in adt_adata.var_names]):
+                    common_genes = set(rna_adata.var_names).intersection(
+                        set(adt_adata.var_names)
                     )
-                )
-                rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
-                adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
+                    print(
+                        "There are {} common genes in RNA and ADT datasets".format(
+                            len(common_genes)
+                        )
+                    )
+                    rna_adata_shared = rna_adata[:, list(common_genes)].copy()
+                    adt_adata_shared = adt_adata[:, list(common_genes)].copy()
+                else:
+                    print(
+                        "There are {} common genes in RNA and ADT datasets".format(
+                            rna_protein_correspondence.shape[0]
+                        )
+                    )
+                    rna_adata_shared = rna_adata[:, rna_protein_correspondence[:, 0]].copy()
+                    adt_adata_shared = adt_adata[:, rna_protein_correspondence[:, 1]].copy()
 
                 ## 通过cell matching 构建组学间的图结构
                 print(

@@ -57,7 +57,10 @@ class GraphAnnTorchDataset:
 
         # Store features in dense format
         if sp.issparse(x):
-            self.x = torch.tensor(x.toarray())
+            try:
+                self.x = torch.tensor(x.toarray())
+            except:
+                self.x = torch.tensor(x.toarray(), dtype=torch.float32)
         else:
             self.x = torch.tensor(x)
 

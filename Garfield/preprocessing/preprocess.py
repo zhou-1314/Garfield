@@ -88,129 +88,136 @@ def DataProcess(
     AnnData or MuData
         Preprocessed single or multi-modal data based on the specified profile and sub_data_type.
     """
-    # load data
-    adata = concat_data(
-        adata_list,
-        batch_categories=None,
-        join="inner",
-        batch_key=sample_col,  # 'batch'
-        index_unique=None,
-        save=None,
-    )
-    if isinstance(adata, AnnData):
-        if adata.X.max() < 50:
-            print(
-                "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
-            )
-        else:
-            adata.layers["counts"] = adata.X.copy()
-    elif isinstance(adata, MuData):
-        if adata.mod["rna"].X.max() < 50:
-            print(
-                "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
-            )
-        else:
-            adata.mod["rna"].layers["counts"] = adata.mod["rna"].X.copy()
-
-    # RNA ATAC ADT
-    if profile in ["RNA", "ATAC", "ADT"]:
-
-        ## 预处理
-        _, adata_hvg = preprocessing(
-            adata,
-            profile=profile,
-            data_type=data_type,
-            genome=genome,
-            use_gene_weight=use_gene_weight,
-            use_top_pcs=use_top_pcs,
-            used_hvgs=used_hvg,
-            min_features=min_features,
-            min_cells=min_cells,
-            target_sum=target_sum,
-            rna_n_top_features=rna_n_top_features,
-            atac_n_top_features=atac_n_top_features,
-            n_components=n_components,
-            n=n_neighbors,
-            batch_key=sample_col,
-            metric=metric,
-            svd_solver=svd_solver,
-            keep_mt=keep_mt,
-        )
-
-        return adata_hvg
-
-    ### Paired multi-modal
-    elif profile == "multi-modal":
-        if len(sub_data_type) == 2:
-            if sub_data_type[0] == "rna" and sub_data_type[1] == "atac":
-                rna_adata = adata.mod["rna"].copy()
-                atac_adata = adata.mod["atac"].copy()
-                mdata = MuData({"rna": rna_adata, "atac": atac_adata})
-            elif sub_data_type[0] == "rna" and sub_data_type[1] == "adt":
-                rna_adata = adata.mod["rna"].copy()
-                adt_adata = adata.mod["adt"].copy()
-                mdata = MuData({"rna": rna_adata, "adt": adt_adata})
-        else:
-            ValueError(
-                'The length of sub_data_type must be 2, such as: ["rna", "atac"] or ["rna", "adt"].'
-            )
-        del adata
-
-        ## 预处理
-        merged_adata = preprocessing(
-            mdata,
-            profile=profile,
-            data_type=data_type,
-            sub_data_type=sub_data_type,
-            genome=genome,
-            weight=weight,
-            use_gene_weight=use_gene_weight,
-            use_top_pcs=use_top_pcs,
-            user_cache_path=user_cache_path,
-            used_hvgs=used_hvg,
-            min_features=min_features,
-            min_cells=min_cells,
-            target_sum=target_sum,
-            rna_n_top_features=rna_n_top_features,
-            atac_n_top_features=atac_n_top_features,
-            n_components=n_components,
-            n=n_neighbors,
-            batch_key=sample_col,
-            metric=metric,
-            svd_solver=svd_solver,
-            keep_mt=keep_mt,
-        )
-
-        return merged_adata
-
-    ### spatial single- or multi-modal
-    elif profile == "spatial":
-        ## 预处理
-        merged_adata = preprocessing(
-            adata,
-            profile=profile,
-            data_type=data_type,
-            sub_data_type=sub_data_type,
-            genome=genome,
-            weight=weight,
-            graph_const_method=graph_const_method,
-            use_gene_weight=use_gene_weight,
-            use_top_pcs=use_top_pcs,
-            used_hvgs=used_hvg,
-            min_features=min_features,
-            min_cells=min_cells,
-            target_sum=target_sum,
-            rna_n_top_features=rna_n_top_features,
-            atac_n_top_features=atac_n_top_features,
-            n_components=n_components,
-            n=n_neighbors,
-            batch_key=sample_col,
-            metric=metric,
-            svd_solver=svd_solver,
-            keep_mt=keep_mt,
-        )
-
-        return merged_adata
-
+    # 如果传入的adata_list中的obsm存在garfield_latent，则直接返回
+    # 如果adata_list不为list，则则为一个元素的list
+    adata_list_new = adata_list if isinstance(adata_list, list) else [adata_list]
+    if any("garfield_latent" in adata.obsm and adata.obsm["garfield_latent"].size > 0 for adata in adata_list_new):
+        return adata_list
     else:
-        return "Unknown input data type."
+        # load data
+        adata = concat_data(
+            adata_list,
+            batch_categories=None,
+            join="inner",
+            batch_key=sample_col,  # 'batch'
+            index_unique=None,
+            save=None,
+        )
+        if isinstance(adata, AnnData):
+            if adata.X.max() < 50:
+                print(
+                    "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
+                )
+            else:
+                adata.layers["counts"] = adata.X.copy()
+        elif isinstance(adata, MuData):
+            if adata.mod["rna"].X.max() < 50:
+                print(
+                    "Warning: adata.X may have already been normalized, adata.X must be `counts`, please check."
+                )
+            else:
+                adata.mod["rna"].layers["counts"] = adata.mod["rna"].X.copy()
+
+        # RNA ATAC ADT
+        if profile in ["RNA", "ATAC", "ADT"]:
+
+            ## 预处理
+            _, adata_hvg = preprocessing(
+                adata,
+                profile=profile,
+                data_type=data_type,
+                genome=genome,
+                use_gene_weight=use_gene_weight,
+                use_top_pcs=use_top_pcs,
+                used_hvgs=used_hvg,
+                min_features=min_features,
+                min_cells=min_cells,
+                target_sum=target_sum,
+                rna_n_top_features=rna_n_top_features,
+                atac_n_top_features=atac_n_top_features,
+                n_components=n_components,
+                n=n_neighbors,
+                batch_key=sample_col,
+                metric=metric,
+                svd_solver=svd_solver,
+                keep_mt=keep_mt,
+            )
+
+            return adata_hvg
+
+        ### Paired multi-modal
+        elif profile == "multi-modal":
+            if len(sub_data_type) == 2:
+                if sub_data_type[0] == "rna" and sub_data_type[1] == "atac":
+                    rna_adata = adata.mod["rna"].copy()
+                    atac_adata = adata.mod["atac"].copy()
+                    mdata = MuData({"rna": rna_adata, "atac": atac_adata})
+                elif sub_data_type[0] == "rna" and sub_data_type[1] == "adt":
+                    rna_adata = adata.mod["rna"].copy()
+                    adt_adata = adata.mod["adt"].copy()
+                    mdata = MuData({"rna": rna_adata, "adt": adt_adata})
+            else:
+                ValueError(
+                    'The length of sub_data_type must be 2, such as: ["rna", "atac"] or ["rna", "adt"].'
+                )
+            del adata
+
+            ## 预处理
+            merged_adata = preprocessing(
+                mdata,
+                profile=profile,
+                data_type=data_type,
+                sub_data_type=sub_data_type,
+                genome=genome,
+                weight=weight,
+                use_gene_weight=use_gene_weight,
+                use_top_pcs=use_top_pcs,
+                user_cache_path=user_cache_path,
+                used_hvgs=used_hvg,
+                min_features=min_features,
+                min_cells=min_cells,
+                target_sum=target_sum,
+                rna_n_top_features=rna_n_top_features,
+                atac_n_top_features=atac_n_top_features,
+                n_components=n_components,
+                n=n_neighbors,
+                batch_key=sample_col,
+                metric=metric,
+                svd_solver=svd_solver,
+                keep_mt=keep_mt,
+            )
+
+            return merged_adata
+
+        ### spatial single- or multi-modal
+        elif profile == "spatial":
+            ## 预处理
+            merged_adata = preprocessing(
+                adata,
+                profile=profile,
+                data_type=data_type,
+                sub_data_type=sub_data_type,
+                genome=genome,
+                weight=weight,
+                graph_const_method=graph_const_method,
+                use_gene_weight=use_gene_weight,
+                use_top_pcs=use_top_pcs,
+                user_cache_path=user_cache_path,
+                used_hvgs=used_hvg,
+                min_features=min_features,
+                min_cells=min_cells,
+                target_sum=target_sum,
+                rna_n_top_features=rna_n_top_features,
+                atac_n_top_features=atac_n_top_features,
+                n_components=n_components,
+                n=n_neighbors,
+                batch_key=sample_col,
+                metric=metric,
+                svd_solver=svd_solver,
+                keep_mt=keep_mt,
+            )
+
+            return merged_adata
+
+        else:
+            return "Unknown input data type."

@@ -17,7 +17,7 @@ def get_device(device_id):
     # 如果有可用的GPU且设定的device_id有效，使用该GPU
     if torch.cuda.is_available() and device_id < available_gpus:
         device = torch.device(f"cuda:{device_id}")
-        print(f"Using GPU: {device_id}")
+        print(f"Using GPU: device-{device_id}")
     # 如果设定的device_id无效或没有可用GPU，使用CPU
     else:
         device = torch.device("cpu")

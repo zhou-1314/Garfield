@@ -173,7 +173,7 @@ def find_initial_pivots(
     max_outward_size=5000,
     matching_ratio=1,
     batching_scheme='pairwise',
-    seed=None,
+    seed=123,
     svd_components1=None,
     svd_components2=None,
     randomized_svd=False,
@@ -807,7 +807,7 @@ def create_adj(
     max_outward_size=5000,
     matching_ratio=1,
     batching_scheme='cyclic', # cyclic or pairwise
-    seed=None,
+    seed=42, # None
     svd_components1=30,
     svd_components2=30,
     cca_components=20,
