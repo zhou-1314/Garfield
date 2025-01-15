@@ -34,7 +34,7 @@ class DSBatchNorm(nn.Module):
 
     def __init__(self, num_features, n_domain, eps=1e-5, momentum=0.1):
         super().__init__()
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.n_domain = n_domain
         self.num_features = num_features
         self.bns = nn.ModuleList(

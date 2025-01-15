@@ -82,7 +82,7 @@ class GATDecoder(nn.Module):
             if type(num_domains) == int:
                 if num_domains == 1:  # TO DO
                     norm = nn.BatchNorm1d(current_dim)
-                else:
+                elif num_domains > 1 and self.used_DSBN:
                     # num_domains >1 represent domain-specific batch normalization of n domain
                     norm = DSBatchNorm(current_dim, num_domains)
             else:
