@@ -79,14 +79,13 @@ class GATDecoder(nn.Module):
             else:
                 current_dim = hidden_dims[::-1][i]  # [::-1] 代表反转
 
+            norm = None
             if type(num_domains) == int:
                 if num_domains == 1:  # TO DO
                     norm = nn.BatchNorm1d(current_dim)
                 elif num_domains > 1 and self.used_DSBN:
                     # num_domains >1 represent domain-specific batch normalization of n domain
                     norm = DSBatchNorm(current_dim, num_domains)
-            else:
-                norm = None
             self.norm.append(norm)
 
         current_dim = in_channels  # in_channels
@@ -233,15 +232,14 @@ class GCNDecoder(nn.Module):
         for i in range(num_hidden_layers):
             current_dim = hidden_dims[i]
 
+            norm = None
             if type(num_domains) == int:
                 if num_domains == 1:  # TO DO
                     norm = nn.BatchNorm1d(current_dim)
-                else:
+                elif num_domains > 1 and self.used_DSBN:
                     norm = DSBatchNorm(
                         current_dim, num_domains
                     )  # num_domains >1 represent domain-specific batch normalization of n domain
-            else:
-                norm = None
             self.norm.append(norm)
 
     def forward(self, x, data):
