@@ -208,6 +208,7 @@ class BaseModelMixin:
         dir_path: str,
         query_adata: Optional[AnnData] = None,
         ref_adata_name: str = "adata_ref.h5ad",
+        batch_key: Optional[str] = None,
         use_cuda: bool = True,
         unfreeze_all_weights: bool = False,
         unfreeze_eps_weight: bool = False,
@@ -250,6 +251,7 @@ class BaseModelMixin:
             dir_path=dir_path,
             query_adata=query_adata,
             ref_adata_name=ref_adata_name,
+            batch_key=batch_key,
             map_location=map_location,
         )
         # print('model_state_dict.keys() is', model_state_dict.keys())

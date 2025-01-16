@@ -64,6 +64,7 @@ def load_saved_files(
     dir_path: str,
     query_adata: Optional[AnnData] = None,
     ref_adata_name: str = "adata_ref.h5ad",
+    batch_key: Optional[str] = None,
     map_location: Optional[Literal["cpu", "cuda"]] = None,
 ) -> Tuple[OrderedDict, dict, np.ndarray, ad.AnnData]:
     """
@@ -77,14 +78,12 @@ def load_saved_files(
     ----------
     dir_path:
         Path where the saved model files are stored.
-    load_adata:
-        If `True`, also load the stored AnnData object.
-    adata_file_name:
-        File name under which the AnnData object is saved.
-    load_adata_atac:
-        If `True`, also load the stored ATAC AnnData object.
-    adata_atac_file_name:
-        File name under which the ATAC AnnData object is saved.
+    query_adata:
+        Query anndata object.
+    ref_adata_name:
+        Name of the reference anndata object.
+    batch_key:
+        Batch key for the reference anndata object.
     map_location:
         Memory location where to map the model files to.
 
@@ -96,10 +95,8 @@ def load_saved_files(
         The stored variable names.
     attr_dict:
         The stored attributes.
-    adata:
-        The stored AnnData object.
-    adata_atac:
-        The stored ATAC AnnData object.
+    adata_concat:
+        The concatenated anndata object.
     """
     attr_path = os.path.join(dir_path, "attr.pkl")
     adata_path = os.path.join(dir_path, ref_adata_name)
@@ -119,13 +116,30 @@ def load_saved_files(
     var_names = np.genfromtxt(var_names_path, delimiter=",", dtype=str)
     if query_adata is not None:
         query_adata = validate_var_names(query_adata, var_names)
-        adata_concat = concat(
+
+        if batch_key is None:
+            raise ValueError("batch_key is required when query_adata is provided.")
+
+        # 检查 batch_key 是否存在于 adata_ref.obs
+        if batch_key not in adata_ref.obs:
+            raise ValueError(f"The column '{batch_key}' does not exist in adata_ref.obs.")
+
+        # 给 query_adata 添加 batch_key 并标记为新 batch
+        new_batch_label = "new_batch"  # 可以根据需要动态设置
+        query_adata.obs[batch_key] = new_batch_label
+
+        # 合并数据集
+        adata_concat = anndata.concat(
             [adata_ref, query_adata],
             label="projection",
             keys=["reference", "query"],
             index_unique=None,
             join="outer",
         )
+        # 验证合并后的结果是否包含 sample_col
+        if batch_key not in adata_concat.obs:
+            raise ValueError(f"The column '{batch_key}' is missing in adata_concat.obs.")
+
         del adata_concat.obsm['garfield_latent'] # remove garfield_latent
     else:
         adata_concat = adata_ref
