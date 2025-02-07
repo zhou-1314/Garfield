@@ -130,3 +130,39 @@ Tools
    trainer.EarlyStopping
    trainer.print_progress
 
+
+Analysis
+~~~~~
+.. module:: Garfield.analysis
+.. currentmodule:: Garfield
+
+.. autosummary::
+   :toctree: generated
+
+   analysis.calc_marker_stats
+   analysis.filter_marker_stats
+   analysis.aggregate_top_markers
+   analysis.get_enrichr_geneset
+   analysis.get_niche_enrichr
+   analysis.get_fast_niche_enrichr
+   analysis.get_niche_gsea
+   analysis.calc_neighbor_prop
+
+
+Plot
+~~~~~
+.. module:: Garfield.plot
+.. currentmodule:: Garfield
+
+.. autosummary::
+   :toctree: generated
+
+   plot.plot_multi_patterns_spatial
+   plot.plot_markers
+   plot.niches_enrichment_barplot
+   plot.niches_enrichment_dotplot
+
+
+
+
+

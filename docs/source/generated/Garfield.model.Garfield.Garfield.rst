@@ -35,6 +35,7 @@
       ~Garfield.half
       ~Garfield.ipu
       ~Garfield.label_transfer
+      ~Garfield.load
       ~Garfield.load_query_data
       ~Garfield.load_state_dict
       ~Garfield.modules

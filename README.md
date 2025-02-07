@@ -1,16 +1,22 @@
 # Garfield: G**raph-based Contrastive Le**ar**ning enable **F**ast S**i**ngle-C**el**l Embe**dding
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/zhou-1314/Garfield/blob/main/LICENSE)
-[![GitHub Repo stars](https://img.shields.io/github/stars/zhou-1314/Garfield)](https://github.com/zhou-1314/Garfield/stargazers)
 [![PyPI - Version](https://img.shields.io/pypi/v/garfield)](https://pypi.org/project/garfield)
 [![Downloads](https://static.pepy.tech/badge/Garfield/month)](https://pepy.tech/project/Garfield)
 [![Docs](https://readthedocs.org/projects/garfield-bio/badge/?version=latest)](https://garfield-bio.readthedocs.io/en/latest/?badge=latest)
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
-<img src="imgs/Garfield_framework2.png" alt="Garfield" width="900"/>
+<img src="imgs/Garfield_framework.png" alt="Garfield" width="900"/>
+
+## News
+
+**January 28, 2025:** We officially released v1.0.0 version of Garfield.
+
+Paper will be coming soon.
 
 ## Installation
+
 Please install `Garfield` from pypi with:
 ```bash
 pip install Garfield
@@ -157,7 +163,7 @@ Garfield uses and/or references the following libraries and packages:
 
 - [SIMBA](https://github.com/pinellolab/simba)
 - [MaxFuse](https://github.com/shuxiaoc/maxfuse)
-- [scanpy](https://github.com/scverse/scanpy)
+- [Scanpy](https://github.com/scverse/scanpy)
 
 Thanks for all their contributors and maintainers!
 

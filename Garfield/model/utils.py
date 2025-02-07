@@ -125,8 +125,9 @@ def load_saved_files(
             raise ValueError(f"The column '{batch_key}' does not exist in adata_ref.obs.")
 
         # 给 query_adata 添加 batch_key 并标记为新 batch
-        new_batch_label = "new_batch"  # 可以根据需要动态设置
-        query_adata.obs[batch_key] = new_batch_label
+        if batch_key not in query_adata.obs:
+            new_batch_label = "new_batch"  # 可以根据需要动态设置
+            query_adata.obs[batch_key] = new_batch_label
 
         # 合并数据集
         adata_concat = anndata.concat(
