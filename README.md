@@ -7,6 +7,8 @@
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
+This repo contains official Pytorch implementation of **Garfield** in our paper: [Graph-based Contrastive Learning Enables Unified Integration and Niche Transfer Across Single-Cell and Spatial Multi-Omics](https://www.biorxiv.org/content/10.1101/2025.02.19.638965v1) 
+
 <img src="imgs/Garfield_framework.png" alt="Garfield" width="900"/>
 
 ## News
