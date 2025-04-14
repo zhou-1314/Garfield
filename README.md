@@ -172,10 +172,12 @@ Thanks for all their contributors and maintainers!
 ## Citation
 If you have used Garfiled for your work, please consider citing:
 ```bibtex
-@misc{2024Garfield,
-    title={Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding},
-    author={Weige Zhou},
-    howpublished = {\url{https://github.com/zhou-1314/Garfield}},
-    year={2024}
+@article{zhou2025graph,
+  title={Graph-based Contrastive Learning Enables Unified Integration and Niche Transfer Across Single-Cell and Spatial Multi-Omics},
+  author={Zhou, Weige and Fan, Xueying and Li, Lanxiang and Zheng, Jianrong and Liu, Xiaodong and Jin, Wenfei and Tian, Luyi},
+  journal={bioRxiv},
+  pages={2025--02},
+  year={2025},
+  publisher={Cold Spring Harbor Laboratory}
 }
 ```
