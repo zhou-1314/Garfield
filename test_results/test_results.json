@@ -1,0 +1,169 @@
+{
+  "config": {
+    "method": "optuna",
+    "n_trials": 100,
+    "timeout": null,
+    "n_jobs": 1,
+    "objective": "OptimizationObjective.MINIMIZE_LOSS",
+    "trial_timeout": 3600,
+    "min_epochs_before_stop": 20,
+    "patience": 10,
+    "cv_folds": 3,
+    "use_cv": true,
+    "max_memory_gb": 16,
+    "gpu_memory_fraction": 0.8,
+    "log_every_n_trials": 5,
+    "save_checkpoint_every": 10,
+    "results_dir": "./hyperopt_results",
+    "fixed_params": {},
+    "param_constraints": {}
+  },
+  "search_space": {
+    "conv_type": [
+      "GAT",
+      "GATv2Conv",
+      "GCN"
+    ],
+    "gnn_layer": [
+      1,
+      4
+    ],
+    "hidden_dims_sizes": [
+      [
+        64,
+        64
+      ],
+      [
+        128,
+        128
+      ],
+      [
+        256,
+        256
+      ],
+      [
+        128,
+        64
+      ],
+      [
+        256,
+        128
+      ]
+    ],
+    "bottle_neck_neurons": [
+      10,
+      50
+    ],
+    "num_heads": [
+      1,
+      8
+    ],
+    "dropout": [
+      0.0,
+      0.5
+    ],
+    "drop_feature_rate": [
+      0.0,
+      0.5
+    ],
+    "drop_edge_rate": [
+      0.0,
+      0.5
+    ],
+    "learning_rate": [
+      1e-05,
+      0.01
+    ],
+    "weight_decay": [
+      1e-06,
+      0.001
+    ],
+    "batch_sizes": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "n_epochs": [
+      50,
+      300
+    ],
+    "lambda_contrastive_instance": [
+      0.1,
+      5.0
+    ],
+    "lambda_contrastive_cluster": [
+      0.1,
+      2.0
+    ],
+    "lambda_gene_expr_recon": [
+      50.0,
+      1000.0
+    ],
+    "lambda_edge_recon": [
+      100.0,
+      1000.0
+    ],
+    "lambda_adj_recon": [
+      0.5,
+      5.0
+    ],
+    "n_neighbors": [
+      5,
+      30
+    ],
+    "graph_const_methods": [
+      "mu_std",
+      "KNN",
+      "Radius"
+    ],
+    "weight": [
+      0.3,
+      0.9
+    ],
+    "n_components": [
+      20,
+      100
+    ],
+    "rna_n_top_features": [
+      1000,
+      2000,
+      3000,
+      4000
+    ],
+    "target_sum": [
+      10000.0,
+      20000.0,
+      50000.0
+    ],
+    "augment_types": [
+      "dropout",
+      "svd"
+    ],
+    "svd_q": [
+      3,
+      15
+    ]
+  },
+  "best_params": {
+    "learning_rate": 0.001,
+    "dropout": 0.2
+  },
+  "best_score": 0.85,
+  "optimization_history": [
+    {
+      "trial": 0,
+      "params": {
+        "lr": 0.001
+      },
+      "score": 0.8
+    },
+    {
+      "trial": 1,
+      "params": {
+        "lr": 0.002
+      },
+      "score": 0.85
+    }
+  ]
+}
