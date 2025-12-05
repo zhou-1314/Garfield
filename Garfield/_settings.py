@@ -246,6 +246,7 @@ class GarfieldConfig:
             # Logging parameters
             "logger": "tensorboard",  # 'tensorboard', 'wandb', 'csv', None
             "log_every_n_steps": 50,  # Logging frequency
+            "log_style": "auto",  # 'auto', 'notebook', 'lightning' - controls progress bar style
             # Checkpoint parameters
             "checkpoint_dir": None,  # If None, uses workdir/checkpoints
             "save_top_k": 1,  # Number of best models to keep

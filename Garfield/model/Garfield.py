@@ -165,6 +165,12 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         Random seed for reproducibility.
     verbose : bool
         Whether to display detailed logs during training.
+    log_style : str
+        Style of logging output ('auto', 'notebook', 'lightning').
+        - 'auto': Automatically detect notebook environment and use appropriate style
+        - 'notebook': Use notebook-style progress bar (similar to original Garfield trainer)
+        - 'lightning': Use PyTorch Lightning's default progress bar
+        Default: 'auto'
     """
 
     def __init__(self, gf_params):
@@ -257,6 +263,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.seed_ = self.args.seed
         self.device_id_ = self.args.device_id
         self.verbose_ = self.args.verbose
+        self.log_style_ = self.args.log_style
 
         # Set seed for reproducibility
         np.random.seed(self.seed_)
@@ -384,6 +391,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
 
         from ..trainer.lightning_module import GarfieldLightningModule
         from ..data.lightning_datamodule import GarfieldDataModule
+        from ..trainer.custom_callbacks import NotebookProgressBar, _is_notebook
 
         print("\n--- MODEL TRAINING (PyTorch Lightning) ---")
 
@@ -462,6 +470,24 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             lr_monitor = LearningRateMonitor(logging_interval='epoch')
             callbacks.append(lr_monitor)
 
+        # Determine whether to use notebook-style progress bar
+        use_notebook_style = False
+        if self.log_style_ == 'auto':
+            # Auto-detect notebook environment
+            use_notebook_style = _is_notebook()
+        elif self.log_style_ == 'notebook':
+            # Force notebook style
+            use_notebook_style = True
+        # else: log_style_ == 'lightning', use default Lightning progress bar
+
+        # Add notebook-style progress bar callback if needed
+        if use_notebook_style:
+            notebook_progress = NotebookProgressBar(
+                n_epochs=self.n_epochs_,
+                verbose=self.verbose_
+            )
+            callbacks.append(notebook_progress)
+
         # 4. Setup logger
         logger_type = self.args.logger
         if logger_type == 'tensorboard':
@@ -488,6 +514,9 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             pl.seed_everything(self.seed_, workers=True)
 
         # 6. Create Lightning Trainer
+        # Disable Lightning's default progress bar when using custom notebook style
+        enable_lightning_progress_bar = self.monitor_ and not use_notebook_style
+
         trainer = pl.Trainer(
             accelerator=self.args.accelerator,
             devices=self.args.devices,
@@ -499,7 +528,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             logger=logger,
             log_every_n_steps=self.args.log_every_n_steps,
             deterministic='warn' if self.seed_ is not None else False,
-            enable_progress_bar=self.monitor_,
+            enable_progress_bar=enable_lightning_progress_bar,
             enable_model_summary=self.monitor_,
             fast_dev_run=self.args.fast_dev_run,
             limit_train_batches=self.args.limit_train_batches,
@@ -736,6 +765,7 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             "device_id": dct["device_id_"],
             "seed": dct["seed_"],
             "verbose": dct["verbose_"],
+            "log_style": dct["log_style_"],
         }
 
         return init_params

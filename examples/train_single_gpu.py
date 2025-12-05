@@ -44,7 +44,7 @@ user_config = dict(
     adata_list=adata,
     profile='spatial',  # 'RNA', 'ATAC', 'ADT', 'multi-modal', 'spatial'
     data_type='single-modal',
-    weight=1.0,
+    weight=0.5,
     sample_col=None,  # Column name for batch information
 
     # Preprocessing options
@@ -68,7 +68,7 @@ user_config = dict(
     # Model parameters
     augment_type='dropout',
     svd_q=5,
-    use_FCencoder=False,
+    use_FCencoder=True,
     conv_type='GAT',  # 'GAT', 'GATv2Conv', or 'GCN'
     gnn_layer=2,
     hidden_dims=[128, 128],
@@ -95,10 +95,10 @@ user_config = dict(
     include_gene_expr_recon_loss=True,
     lambda_latent_contrastive_instanceloss=1.0,
     lambda_latent_contrastive_clusterloss=0.5,
-    lambda_gene_expr_recon=10.0,
+    lambda_gene_expr_recon=1.0,
     lambda_edge_recon=1.0,
-    lambda_latent_adj_recon_loss=1.0,
-    lambda_omics_recon_mmd_loss=5.0,
+    lambda_latent_adj_recon_loss=0.0,
+    lambda_omics_recon_mmd_loss=0.2,
 
     # Training parameters
     n_epochs=100,
@@ -127,6 +127,7 @@ user_config = dict(
     early_stopping_kwargs=None,
     monitor=True,
     seed=42,
+    log_style='auto',
     verbose=True,
 )
 
