@@ -2,5 +2,6 @@
 from ._settings import settings
 from ._version import __version__
 from . import data, model, modules, nn, preprocessing, trainer, plot, analysis
+from .model.Garfield import Garfield
 
-__all__ = ["data", "model", "modules", "nn", "preprocessing", "trainer", "plot", "analysis"]
+__all__ = ["data", "model", "modules", "nn", "preprocessing", "trainer", "plot", "analysis", "Garfield"]

@@ -16,5 +16,6 @@ adjusttext>=0.7.3
 umap-learn>=0.3.0
 pybedtools>=0.8.0
 torch_geometric>=2.4.0
+pytorch-lightning>=2.0.0  # NEW: For multi-GPU distributed training
 # bedtools>=2.29.0 # not available in pip
 tables

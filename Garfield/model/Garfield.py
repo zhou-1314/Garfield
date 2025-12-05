@@ -367,38 +367,50 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.is_trained_ = False
 
     def train(self, **trainer_kwargs):
-        self.trainer = GarfieldTrainer(
+        """
+        Train the Garfield model using PyTorch Lightning.
+
+        Supports both single-GPU and multi-GPU distributed training (DDP).
+
+        Parameters
+        ----------
+        trainer_kwargs : dict
+            Additional keyword arguments passed to pl.Trainer.
+        """
+        import os
+        import pytorch_lightning as pl
+        from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
+        from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+
+        from ..trainer.lightning_module import GarfieldLightningModule
+        from ..data.lightning_datamodule import GarfieldDataModule
+
+        print("\n--- MODEL TRAINING (PyTorch Lightning) ---")
+
+        # 1. Create Lightning DataModule
+        datamodule = GarfieldDataModule(
             adata=self.adata,
-            model=self.model,
             label_name=self.sample_col_,
             used_pca_feat=self.used_pca_feat_,
             adj_key=self.adj_key_,
-            # data split
             edge_val_ratio=self.edge_val_ratio_,
             edge_test_ratio=self.edge_test_ratio_,
             node_val_ratio=self.node_val_ratio_,
             node_test_ratio=self.node_test_ratio_,
-            # data process
             augment_type=self.augment_type_,
-            # data loader
             num_neighbors=self.num_neighbors_,
             loaders_n_hops=self.loaders_n_hops_,
             edge_batch_size=self.edge_batch_size_,
             node_batch_size=self.node_batch_size_,
-            # other parameters
-            reload_best_model=self.reload_best_model_,
-            use_early_stopping=self.use_early_stopping_,
-            early_stopping_kwargs=self.early_stopping_kwargs_,
-            monitor=self.monitor_,
-            device_id=self.device_id_,
-            verbose=self.verbose_,
+            num_workers=self.args.num_workers,
+            persistent_workers=self.args.persistent_workers,
             seed=self.seed_,
-            **trainer_kwargs,
         )
 
-        self.trainer.train(
-            n_epochs=self.n_epochs_,
-            n_epochs_no_edge_recon=self.lambda_edge_recon_,  # : int=0
+        # 2. Create Lightning Module
+        lightning_model = GarfieldLightningModule(
+            model=self.model,
+            augment_type=self.augment_type_,
             learning_rate=self.learning_rate_,
             weight_decay=self.weight_decay_,
             gradient_clipping=self.gradient_clipping_,
@@ -408,19 +420,125 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             lambda_latent_contrastive_instanceloss=self.lambda_latent_contrastive_instanceloss_,
             lambda_latent_contrastive_clusterloss=self.lambda_latent_contrastive_clusterloss_,
             lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_,
+            n_epochs_no_edge_recon=self.n_epochs_no_edge_recon_,
+            verbose=self.verbose_,
         )
 
-        self.node_batch_size_ = self.trainer.node_batch_size_
+        # 3. Setup callbacks
+        callbacks = []
 
-        self.is_trained_ = True
+        # Checkpoint callback
+        checkpoint_dir = self.args.checkpoint_dir
+        if checkpoint_dir is None:
+            checkpoint_dir = os.path.join(self.args.user_cache_path, 'checkpoints')
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename='garfield-{epoch:02d}-{val_global_loss:.4f}',
+            monitor='val_global_loss' if self.edge_val_ratio_ > 0 and self.node_val_ratio_ > 0 else 'train_global_loss',
+            mode='min',
+            save_top_k=self.args.save_top_k,
+            save_last=self.args.save_last,
+            verbose=self.monitor_,
+        )
+        callbacks.append(checkpoint_callback)
+
+        # Early stopping callback
+        if self.use_early_stopping_:
+            early_stop_kwargs = self.early_stopping_kwargs_ or {}
+            early_stop_callback = EarlyStopping(
+                monitor=early_stop_kwargs.get('early_stopping_metric',
+                       'val_global_loss' if self.edge_val_ratio_ > 0 else 'train_global_loss'),
+                min_delta=early_stop_kwargs.get('metric_improvement_threshold', 0.0),
+                patience=early_stop_kwargs.get('patience', 8),
+                mode='min',
+                verbose=self.monitor_,
+            )
+            callbacks.append(early_stop_callback)
+
+        # Learning rate monitor
+        if self.monitor_:
+            lr_monitor = LearningRateMonitor(logging_interval='epoch')
+            callbacks.append(lr_monitor)
+
+        # 4. Setup logger
+        logger_type = self.args.logger
+        if logger_type == 'tensorboard':
+            logger = TensorBoardLogger(
+                save_dir=self.args.user_cache_path,
+                name='garfield_logs',
+            )
+        elif logger_type == 'csv':
+            logger = CSVLogger(
+                save_dir=self.args.user_cache_path,
+                name='logs',
+            )
+        elif logger_type is None or logger_type == 'none':
+            logger = False
+        else:
+            # Default to TensorBoard
+            logger = TensorBoardLogger(
+                save_dir=self.args.user_cache_path,
+                name='garfield_logs',
+            )
+
+        # 5. Set deterministic mode if seed is provided
+        if self.seed_ is not None:
+            pl.seed_everything(self.seed_, workers=True)
+
+        # 6. Create Lightning Trainer
+        trainer = pl.Trainer(
+            accelerator=self.args.accelerator,
+            devices=self.args.devices,
+            num_nodes=self.args.num_nodes,
+            strategy=self.args.strategy,
+            precision=self.args.precision,
+            max_epochs=self.n_epochs_,
+            callbacks=callbacks,
+            logger=logger,
+            log_every_n_steps=self.args.log_every_n_steps,
+            deterministic='warn' if self.seed_ is not None else False,
+            enable_progress_bar=self.monitor_,
+            enable_model_summary=self.monitor_,
+            fast_dev_run=self.args.fast_dev_run,
+            limit_train_batches=self.args.limit_train_batches,
+            limit_val_batches=self.args.limit_val_batches,
+            **trainer_kwargs,
+        )
+
+        # 7. Train
+        trainer.fit(lightning_model, datamodule=datamodule)
+
+        # 8. Load best model if requested
+        if self.reload_best_model_ and checkpoint_callback.best_model_path:
+            print(f"\nLoading best model from {checkpoint_callback.best_model_path}")
+            best_lightning_model = GarfieldLightningModule.load_from_checkpoint(
+                checkpoint_callback.best_model_path,
+                model=self.model,
+            )
+            # Update wrapped model with best weights
+            self.model.load_state_dict(best_lightning_model.model.state_dict())
+
+        # 9. Set model to eval mode
         self.model.eval()
+        self.is_trained_ = True
 
+        # Store node_batch_size from datamodule
+        self.node_batch_size_ = datamodule.node_batch_size
+
+        # Store trainer reference
+        self.trainer = trainer
+
+        # 10. Compute embeddings
+        print("\n--- COMPUTING LATENT EMBEDDINGS ---")
         self.adata.obsm[self.latent_key_], _ = self.get_latent_representation(
             adata=self.adata,
             adj_key=self.adj_key_,
             return_mu_std=True,
             node_batch_size=self.node_batch_size_,
         )
+        print(f"Embeddings stored in adata.obsm['{self.latent_key_}']")
 
     # embedding
     def get_latent_representation(

@@ -90,7 +90,52 @@ def edgeList2edgeDict(edgeList, node_size):
     }  # ensure all nodes are present
 
 
-def graph_construction(adata, mode, k, batch_key, verbose=True):
+def graph_construction(adata, mode, k, batch_key, verbose=True, use_optimized=None, n_jobs=1):
+    """
+    Construct spatial neighbor network.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data with spatial coordinates.
+    mode : str
+        Graph construction method: 'mu_std', 'Radius', or 'KNN'.
+    k : int
+        Cutoff parameter.
+    batch_key : str
+        Column in adata.obs for batch information.
+    verbose : bool
+        Print progress messages.
+    use_optimized : bool, optional
+        Use optimized graph construction (default: auto-detect via env var).
+        Set GARFIELD_USE_OPTIMIZED_GRAPH=1 to enable globally.
+    n_jobs : int
+        Number of parallel jobs for optimized version (default: 1).
+
+    Returns
+    -------
+    adj_matrix : scipy.sparse.csr_matrix
+        Sparse adjacency matrix.
+    """
+    # Auto-detect whether to use optimized version
+    if use_optimized is None:
+        import os
+        use_optimized = os.environ.get('GARFIELD_USE_OPTIMIZED_GRAPH', '0') == '1'
+
+    if use_optimized:
+        try:
+            from .adj_construction_optimized import graph_construction_optimized
+            if verbose:
+                print("Using optimized graph construction...")
+            return graph_construction_optimized(
+                adata, mode=mode, k=k, batch_key=batch_key,
+                n_jobs=n_jobs, use_gpu=False, verbose=verbose
+            )
+        except ImportError as e:
+            if verbose:
+                print(f"Optimized version not available ({e}), using original...")
+
+    # Original implementation
     edge_list = graph_computing(
         adata, k_cutoff=k, model=mode, batch_key=batch_key, verbose=verbose
     )

@@ -99,6 +99,55 @@ class GarfieldConfig:
         self.set_gf_params()
         print("Saving results in: %s" % workdir)
 
+    def _migrate_device_config(self, user_config, default_config):
+        """
+        Migrate legacy device_id parameter to new accelerator/devices parameters.
+
+        Parameters
+        ----------
+        user_config : dict
+            User-provided configuration.
+        default_config : dict
+            Default configuration.
+
+        Returns
+        -------
+        dict
+            Updated configuration with migrated parameters.
+        """
+        import warnings
+
+        migrated_config = user_config.copy()
+
+        # Check if user specified legacy device_id
+        if 'device_id' in user_config and user_config['device_id'] is not None:
+            device_id = user_config['device_id']
+
+            # Migrate to new parameters
+            if device_id >= 0:
+                # Use GPU with specific device ID
+                migrated_config.setdefault('accelerator', 'gpu')
+                migrated_config.setdefault('devices', [device_id])
+            else:
+                # Use CPU
+                migrated_config.setdefault('accelerator', 'cpu')
+                migrated_config.setdefault('devices', 1)
+
+            # Warn user about deprecation
+            warnings.warn(
+                f"Parameter 'device_id={device_id}' is deprecated and will be removed in a future version. "
+                f"Please use 'accelerator' and 'devices' instead. "
+                f"Auto-migrated to: accelerator='{migrated_config['accelerator']}', "
+                f"devices={migrated_config['devices']}",
+                DeprecationWarning,
+                stacklevel=3
+            )
+
+            # Remove device_id from config
+            migrated_config.pop('device_id', None)
+
+        return migrated_config
+
     def set_gf_params(self, config=None):
         """Set Garfield parameters
 
@@ -185,7 +234,28 @@ class GarfieldConfig:
             "use_early_stopping": True,
             "early_stopping_kwargs": None,
             "monitor": True,
-            "device_id": 0,
+            # Distributed training parameters (NEW - replaces device_id)
+            "accelerator": "auto",  # 'auto', 'gpu', 'cpu', 'tpu'
+            "devices": 1,  # int (number of devices) or list [0, 1, 2, 3]
+            "num_nodes": 1,  # For multi-node distributed training
+            "strategy": "auto",  # 'auto', 'ddp', 'ddp_spawn', etc.
+            "precision": "32",  # '32', '16-mixed', 'bf16-mixed'
+            # Dataloader parameters
+            "num_workers": 0,  # Number of dataloader workers per device
+            "persistent_workers": False,  # Keep workers alive between epochs
+            # Logging parameters
+            "logger": "tensorboard",  # 'tensorboard', 'wandb', 'csv', None
+            "log_every_n_steps": 50,  # Logging frequency
+            # Checkpoint parameters
+            "checkpoint_dir": None,  # If None, uses workdir/checkpoints
+            "save_top_k": 1,  # Number of best models to keep
+            "save_last": True,  # Always save last checkpoint
+            # Debugging parameters
+            "fast_dev_run": False,  # Run 1 batch per train/val for testing
+            "limit_train_batches": 1.0,  # Fraction of training data to use
+            "limit_val_batches": 1.0,  # Fraction of validation data to use
+            # Legacy parameter (deprecated, use accelerator/devices instead)
+            "device_id": None,  # DEPRECATED: Will be migrated to accelerator/devices
             "seed": 2024,
             "verbose": False,
         }
@@ -195,7 +265,11 @@ class GarfieldConfig:
             config = {}  # 如果 `config` 为空则设为空字典
 
         user_config = config
-        config = {**default_config, **user_config}
+
+        # Migrate legacy device_id parameter to new accelerator/devices
+        config = self._migrate_device_config(user_config, default_config)
+
+        config = {**default_config, **config}
 
         assert (
             config["adata_list"] is not None
