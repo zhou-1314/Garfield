@@ -14,163 +14,11 @@ from ..data.dataloaders import initialize_dataloaders
 from .utils import weighted_knn_trainer, weighted_knn_transfer
 from ..nn.encoders import GATEncoder, GCNEncoder
 from ..modules.GNNModelVAE import GNNModelVAE
-from ..trainer.trainer import GarfieldTrainer
 
 
 class Garfield(torch.nn.Module, BaseModelMixin):
     """
     Garfield: Graph-based Contrastive Learning enable Fast Single-Cell Embedding
-
-    Parameters
-    ----------
-    adata_list : list
-        List of AnnData objects containing data from multiple batches or samples.
-    profile : str
-        Specifies the data profile type (e.g., 'RNA', 'ATAC', 'ADT', 'multi-modal', 'spatial').
-    data_type : str
-        Type of the multi-omics dataset (e.g., Paired, UnPaired) for preprocessing.
-    sub_data_type : list[str]
-        List of data types for multi-modal datasets (e.g., ['rna', 'atac'] or ['rna', 'adt']).
-    sample_col : str
-        Column in the dataset that indicates batch or sample identifiers (default: 'batch').
-    weight : float or None
-        Weighting factor that determines the contribution of different modalities or types of graphs in multi-omics or spatial data.
-        - For non-spatial single-cell multi-omics data (e.g., RNA + ATAC),
-        `weight` specifies the contribution of the graph constructed from RNA data.
-        The remaining (1 - weight) represents the contribution from the other modality.
-        - For spatial single-modality data,
-        `weight` refers to the contribution of the graph constructed from the physical spatial information,
-        while (1 - weight) reflects the contribution from the molecular graph.
-    graph_const_method : str
-        Method for constructing the graph (e.g., 'mu_std', 'Radius', 'KNN', 'Squidpy').
-    genome : str
-        Reference genome to use during preprocessing (e.g., 'mm10', 'mm9', 'hg38', 'hg19').
-    use_gene_weight : bool
-        Whether to apply gene weights in the preprocessing step.
-    use_top_pcs : bool
-        Whether to use the top principal components during gene score preprocessing step.
-    used_hvg : bool
-        Whether to use highly variable genes (HVGs) for analysis.
-    min_features : int
-        Minimum number of features required for a cell to be included in the dataset.
-    min_cells : int
-        Minimum number of cells required for a feature to be retained in the dataset.
-    keep_mt : bool
-        Whether to retain mitochondrial genes in the analysis.
-    target_sum : float
-        Target sum used for normalization (e.g., 1e4 for counts per cell).
-    rna_n_top_features : int
-        Number of top features to retain for RNA datasets (e.g., 3000).
-    atac_n_top_features : int
-        Number of top features to retain for ATAC datasets (e.g., 10000).
-    n_components : int
-        Number of components to use for dimensionality reduction (e.g., PCA).
-    n_neighbors : int
-        Number of neighbors to use in graph-based algorithms (e.g., KNN).
-    metric : str
-        Distance metric used during graph construction (e.g., 'correlation', 'euclidean').
-    svd_solver : str
-        Solver for singular value decomposition (SVD), such as 'arpack' or 'randomized'.
-    used_pca_feat: bool
-        Whether to use PCA or LSI features for the encoder.
-    adj_key : str
-        Key in the AnnData object that holds the adjacency matrix.
-    edge_val_ratio : float
-        Ratio of edges to use for validation in edge-level tasks.
-    edge_test_ratio : float
-        Ratio of edges to use for testing in edge-level tasks.
-    node_val_ratio : float
-        Ratio of nodes to use for validation in node-level tasks.
-    node_test_ratio : float
-        Ratio of nodes to use for testing in node-level tasks.
-    augment_type : str
-        Type of augmentation to use (e.g., 'dropout', 'svd').
-    svd_q : int
-        Rank for the low-rank SVD approximation.
-    use_FCencoder : bool
-        Whether to use a fully connected encoder before the graph layers.
-    hidden_dims : list[int]
-        List of hidden layer dimensions for the encoder.
-    bottle_neck_neurons : int
-        Number of neurons in the bottleneck (latent) layer.
-    num_heads : int
-        Number of attention heads for each graph attention layer.
-    dropout : float
-        Dropout rate applied during training.
-    concat : bool
-        Whether to concatenate attention heads or not.
-    drop_feature_rate : float
-        Dropout rate applied to node features.
-    drop_edge_rate : float
-        Dropout rate applied to edges during augmentation.
-    used_edge_weight : bool
-        Whether to use edge weights in the graph layers.
-    used_DSBN : bool
-        Whether to use domain-specific batch normalization.
-    conv_type : str
-        Type of graph convolution to use ('GATv2Conv', 'GAT', 'GCN').
-    gnn_layer : int
-        Number of times the encoder is repeated in the forward pass, not the number of GNN layers.
-    cluster_num : int
-        Number of clusters for latent feature clustering.
-    num_neighbors : int
-        Number of neighbors to sample for graph-based data loaders.
-    loaders_n_hops : int
-        Number of hops for neighbors during graph construction.
-    edge_batch_size : int
-        Batch size for edge-level tasks.
-    node_batch_size : int
-        Batch size for node-level tasks.
-    include_edge_recon_loss : bool
-        Whether to include edge reconstruction loss in the training objective.
-    include_gene_expr_recon_loss : bool
-        Whether to include gene expression reconstruction loss in the training objective.
-    used_mmd : bool
-        Whether to use maximum mean discrepancy (MMD) for domain adaptation.
-    lambda_latent_contrastive_instanceloss : float
-        Weight for the instance-level contrastive loss.
-    lambda_latent_contrastive_clusterloss : float
-        Weight for the cluster-level contrastive loss.
-    lambda_gene_expr_recon : float
-        Weight for the gene expression reconstruction loss.
-    lambda_latent_adj_recon_loss : float
-        Weight for the adjacency reconstruction loss.
-    lambda_edge_recon : float
-        Weight for the edge reconstruction loss.
-    lambda_omics_recon_mmd_loss : float
-        Weight for the MMD loss in omics reconstruction tasks.
-    n_epochs : int
-        Number of training epochs.
-    n_epochs_no_edge_recon : int
-        Number of epochs without edge reconstruction loss.
-    learning_rate : float
-        Learning rate for the optimizer.
-    weight_decay : float
-        Weight decay (L2 regularization) for the optimizer.
-    gradient_clipping : float
-        Maximum norm for gradient clipping.
-    latent_key : str
-        Key for storing latent features in the AnnData object.
-    reload_best_model : bool
-        Whether to reload the best model after training.
-    use_early_stopping : bool
-        Whether to use early stopping during training.
-    early_stopping_kwargs : dict
-        Arguments for configuring early stopping (e.g., patience, delta).
-    monitor : bool
-        Whether to print training progress.
-    device_id: int
-        Device ID for GPU training.
-    seed : int
-        Random seed for reproducibility.
-    verbose : bool
-        Whether to display detailed logs during training.
-    log_style : str
-        Style of logging output ('auto', 'notebook', 'lightning').
-        - 'auto': Automatically detect notebook environment and use appropriate style
-        - 'notebook': Use notebook-style progress bar (similar to original Garfield trainer)
-        - 'lightning': Use PyTorch Lightning's default progress bar
-        Default: 'auto'
     """
 
     def __init__(self, gf_params):
@@ -264,6 +112,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         self.device_id_ = self.args.device_id
         self.verbose_ = self.args.verbose
         self.log_style_ = self.args.log_style
+        self.use_lightning_ = self.args.use_lightning
+        self.lightning_sampling_mode_ = self.args.lightning_sampling_mode
 
         # Set seed for reproducibility
         np.random.seed(self.seed_)
@@ -373,7 +223,150 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         )
         self.is_trained_ = False
 
-    def train(self, **trainer_kwargs):
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+    def _should_use_lightning(self):
+        """
+        Determine whether to use PyTorch Lightning trainer or original trainer.
+
+        Returns
+        -------
+        bool
+            True if should use Lightning, False for original trainer.
+        """
+        use_lightning = self.use_lightning_
+
+        if use_lightning == 'auto':
+            # Auto-detect: use Lightning only for multi-GPU/multi-node scenarios
+            devices = self.args.devices
+            num_nodes = self.args.num_nodes
+
+            # Check if multi-GPU or multi-node
+            if num_nodes > 1:
+                return True
+            if isinstance(devices, list) and len(devices) > 1:
+                return True
+            if isinstance(devices, int) and devices > 1:
+                return True
+
+            # Single device: use original trainer for better performance
+            return False
+        else:
+            # Explicit True/False
+            return bool(use_lightning)
+
+    def _validate_distributed_params(self):
+        """
+        Validate distributed training parameters to catch configuration errors early.
+
+        Raises
+        ------
+        ValueError
+            If invalid parameter values are detected.
+        """
+        # Validate precision
+        valid_precisions = ['32', '16-mixed', 'bf16-mixed', '64', 'bf16', '16', 32, 16, 64]
+        if self.args.precision not in valid_precisions:
+            raise ValueError(
+                f"Invalid precision '{self.args.precision}'. "
+                f"Valid options: {valid_precisions}"
+            )
+
+        # Validate accelerator
+        valid_accelerators = ['auto', 'cpu', 'gpu', 'tpu', 'cuda', 'mps']
+        if self.args.accelerator not in valid_accelerators:
+            raise ValueError(
+                f"Invalid accelerator '{self.args.accelerator}'. "
+                f"Valid options: {valid_accelerators}"
+            )
+
+        # Validate devices
+        if isinstance(self.args.devices, int):
+            if self.args.devices < 0:
+                raise ValueError(f"devices must be >= 0, got {self.args.devices}")
+        elif isinstance(self.args.devices, list):
+            if len(self.args.devices) == 0:
+                raise ValueError("devices list cannot be empty")
+        elif self.args.devices != 'auto':
+            raise ValueError(
+                f"devices must be int, list, or 'auto', got {type(self.args.devices)}"
+            )
+
+        # Validate num_nodes
+        if self.args.num_nodes < 1:
+            raise ValueError(f"num_nodes must be >= 1, got {self.args.num_nodes}")
+
+        # Validate num_workers
+        if self.args.num_workers < 0:
+            raise ValueError(f"num_workers must be >= 0, got {self.args.num_workers}")
+
+        # Validate persistent_workers
+        if self.args.persistent_workers and self.args.num_workers == 0:
+            raise ValueError(
+                "persistent_workers=True requires num_workers > 0. "
+                "Set num_workers >= 1 or persistent_workers=False."
+            )
+
+        # Validate accumulate_grad_batches
+        if self.args.accumulate_grad_batches < 1:
+            raise ValueError(
+                f"accumulate_grad_batches must be >= 1, got {self.args.accumulate_grad_batches}"
+            )
+
+        # Validate lightning_sampling_mode
+        valid_sampling_modes = ['auto', 'legacy', 'optimized']
+        if self.lightning_sampling_mode_ not in valid_sampling_modes:
+            raise ValueError(
+                f"Invalid lightning_sampling_mode '{self.lightning_sampling_mode_}'. "
+                f"Valid options: {valid_sampling_modes}"
+            )
+
+        # Validate use_lightning
+        if self.use_lightning_ not in ['auto', True, False]:
+            raise ValueError(
+                f"Invalid use_lightning '{self.use_lightning_}'. "
+                f"Valid options: 'auto', True, False"
+            )
+
+    def train_legacy(self, **trainer_kwargs):
+        """
+        Train the Garfield model.
+
+        Automatically selects between PyTorch Lightning trainer (for distributed
+        training) and original trainer (for single GPU, better performance).
+
+        For distributed training (multi-GPU, multi-node), PyTorch Lightning is used.
+        For single GPU/CPU, the original faster trainer is used by default.
+
+        You can override this behavior with the `use_lightning` parameter:
+        - 'auto' (default): Automatic selection based on hardware configuration
+        - True: Force PyTorch Lightning trainer
+        - False: Force original trainer
+
+        Parameters
+        ----------
+        trainer_kwargs : dict
+            Additional keyword arguments passed to pl.Trainer (Lightning only).
+        """
+        # Validate distributed training parameters
+        self._validate_distributed_params()
+
+        # Determine which trainer to use
+        if self._should_use_lightning():
+            print("\n--- Using PyTorch Lightning Trainer (Distributed Training) ---")
+            self._train_with_lightning(**trainer_kwargs)
+        else:
+            print("\n--- Using Original Trainer (Single GPU) ---")
+            if trainer_kwargs:
+                import warnings
+                warnings.warn(
+                    "trainer_kwargs are ignored when using the original trainer. "
+                    "Set use_lightning=True to use PyTorch Lightning with custom kwargs."
+                )
+            self._train_with_original_trainer()
+
+    def _train_with_lightning(self, **trainer_kwargs):
         """
         Train the Garfield model using PyTorch Lightning.
 
@@ -385,15 +378,24 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             Additional keyword arguments passed to pl.Trainer.
         """
         import os
-        import pytorch_lightning as pl
-        from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
-        from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+
+        # Error handling for PyTorch Lightning import
+        try:
+            import pytorch_lightning as pl
+            from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
+            from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+        except ImportError as e:
+            raise ImportError(
+                "PyTorch Lightning is required for distributed training but not installed.\n"
+                "Install with: pip install pytorch-lightning\n"
+                "Alternatively, set use_lightning=False to use the original trainer."
+            ) from e
 
         from ..trainer.lightning_module import GarfieldLightningModule
         from ..data.lightning_datamodule import GarfieldDataModule
         from ..trainer.custom_callbacks import NotebookProgressBar, _is_notebook
 
-        print("\n--- MODEL TRAINING (PyTorch Lightning) ---")
+        print("Initializing PyTorch Lightning components...")
 
         # 1. Create Lightning DataModule
         datamodule = GarfieldDataModule(
@@ -413,23 +415,23 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             num_workers=self.args.num_workers,
             persistent_workers=self.args.persistent_workers,
             seed=self.seed_,
+            lightning_sampling_mode=self.lightning_sampling_mode_,
         )
 
         # 2. Create Lightning Module
+        # Pass the GNN-VAE model (self.model) which is the actual neural network
         lightning_model = GarfieldLightningModule(
             model=self.model,
-            augment_type=self.augment_type_,
             learning_rate=self.learning_rate_,
             weight_decay=self.weight_decay_,
             gradient_clipping=self.gradient_clipping_,
+            augment_type=self.augment_type_,
             lambda_edge_recon=self.lambda_edge_recon_,
             lambda_gene_expr_recon=self.lambda_gene_expr_recon_,
             lambda_latent_adj_recon_loss=self.lambda_latent_adj_recon_loss_,
             lambda_latent_contrastive_instanceloss=self.lambda_latent_contrastive_instanceloss_,
             lambda_latent_contrastive_clusterloss=self.lambda_latent_contrastive_clusterloss_,
             lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_,
-            n_epochs_no_edge_recon=self.n_epochs_no_edge_recon_,
-            verbose=self.verbose_,
         )
 
         # 3. Setup callbacks
@@ -527,7 +529,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             callbacks=callbacks,
             logger=logger,
             log_every_n_steps=self.args.log_every_n_steps,
-            deterministic='warn' if self.seed_ is not None else False,
+            accumulate_grad_batches=self.args.accumulate_grad_batches,  # Gradient accumulation
+            deterministic=False,  # Disabled for performance; override via trainer_kwargs if needed
             enable_progress_bar=enable_lightning_progress_bar,
             enable_model_summary=self.monitor_,
             fast_dev_run=self.args.fast_dev_run,
@@ -559,6 +562,9 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         # Store trainer reference
         self.trainer = trainer
 
+        # 9.5. Perform final model evaluation on validation set
+        self._perform_final_evaluation(datamodule)
+
         # 10. Compute embeddings
         print("\n--- COMPUTING LATENT EMBEDDINGS ---")
         self.adata.obsm[self.latent_key_], _ = self.get_latent_representation(
@@ -568,6 +574,239 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             node_batch_size=self.node_batch_size_,
         )
         print(f"Embeddings stored in adata.obsm['{self.latent_key_}']")
+
+    def _perform_final_evaluation(self, datamodule):
+        """
+        Perform final model evaluation on validation set.
+
+        This method computes evaluation metrics (AUROC, AUPRC, accuracy, F1, MSE)
+        on the validation set after training completes, matching the behavior of
+        the original trainer.
+
+        Parameters
+        ----------
+        datamodule : GarfieldDataModule
+            The Lightning DataModule containing validation dataloaders.
+        """
+        # Skip evaluation if no validation data
+        if self.edge_val_ratio_ == 0 and self.node_val_ratio_ == 0:
+            return
+
+        import numpy as np
+        import torch
+        from ..trainer.metrics import eval_metrics
+
+        # In DDP mode, only perform evaluation on rank 0 to avoid redundant computation
+        if torch.distributed.is_initialized():
+            if torch.distributed.get_rank() != 0:
+                return
+
+        print("\n--- MODEL EVALUATION ---")
+
+        # Get validation dataloader (returns a single DualGraphDataLoader)
+        val_dataloader = datamodule.val_dataloader()
+
+        if val_dataloader is None:
+            print("No validation data available for evaluation.")
+            return
+
+        # Collect edge reconstruction predictions and labels
+        edge_recon_probs_val_accumulated = np.array([])
+        edge_recon_labels_val_accumulated = np.array([])
+
+        # Collect gene expression predictions and ground truth
+        omics_pred_dict_val_accumulated = np.array([])
+        omics_truth_dict_val_accumulated = np.array([])
+
+        # Get device from model parameters (standard PyTorch way)
+        device = next(self.model.parameters()).device
+
+        # Iterate over DualGraphDataLoader which yields (edge_batch, node_batch) tuples
+        with torch.no_grad():
+            for edge_val_data_batch, node_val_data_batch in val_dataloader:
+                # Process edge batch
+                if hasattr(edge_val_data_batch, 'to'):
+                    edge_val_data_batch = edge_val_data_batch.to(device)
+
+                edge_val_model_output = self.model(
+                    data_batch=edge_val_data_batch,
+                    decoder_type="graph",
+                    augment_type=None
+                )
+
+                # Calculate edge evaluation metrics
+                edge_recon_probs_val = torch.sigmoid(
+                    edge_val_model_output["edge_recon_logits"]
+                )
+                edge_recon_labels_val = edge_val_model_output["edge_recon_labels"]
+                edge_recon_probs_val_accumulated = np.append(
+                    edge_recon_probs_val_accumulated,
+                    edge_recon_probs_val.detach().cpu().numpy(),
+                )
+                edge_recon_labels_val_accumulated = np.append(
+                    edge_recon_labels_val_accumulated,
+                    edge_recon_labels_val.detach().cpu().numpy(),
+                )
+
+                # Process node batch
+                if hasattr(node_val_data_batch, 'to'):
+                    node_val_data_batch = node_val_data_batch.to(device)
+
+                node_val_model_output = self.model(
+                    data_batch=node_val_data_batch,
+                    decoder_type="omics",
+                    augment_type=self.augment_type_,
+                )
+
+                # Calculate node evaluation metrics
+                omics_truth_dict_val = node_val_model_output["truth_x"]
+                omics_pred_dict_val = node_val_model_output["recon_features"]
+                omics_pred_dict_val_accumulated = np.append(
+                    omics_pred_dict_val_accumulated,
+                    omics_pred_dict_val.detach().cpu().numpy(),
+                )
+                omics_truth_dict_val_accumulated = np.append(
+                    omics_truth_dict_val_accumulated,
+                    omics_truth_dict_val.detach().cpu().numpy(),
+                )
+
+        # Compute evaluation metrics
+        # DualGraphDataLoader always provides both edge and node batches
+        if len(edge_recon_probs_val_accumulated) > 0 and len(omics_pred_dict_val_accumulated) > 0:
+            val_eval_dict = eval_metrics(
+                edge_recon_probs=edge_recon_probs_val_accumulated,
+                edge_labels=edge_recon_labels_val_accumulated,
+                omics_recon_pred=omics_pred_dict_val_accumulated,
+                omics_recon_truth=omics_truth_dict_val_accumulated,
+            )
+            print(f"val AUROC score: {val_eval_dict['auroc_score']:.4f}")
+            print(f"val AUPRC score: {val_eval_dict['auprc_score']:.4f}")
+            print(f"val best accuracy score: {val_eval_dict['best_acc_score']:.4f}")
+            print(f"val best F1 score: {val_eval_dict['best_f1_score']:.4f}")
+            print(f"val MSE score: {val_eval_dict['gene_expr_mse_score']:.4f}")
+        else:
+            print("Warning: Incomplete validation data collected.")
+
+    def _train_with_original_trainer(self):
+        """
+        Train the Garfield model using the original optimized trainer.
+
+        This trainer is faster for single GPU scenarios but does not support
+        distributed training across multiple GPUs or nodes.
+        """
+        from ..trainer.trainer import GarfieldTrainer
+
+        print("Initializing original Garfield trainer...")
+
+        # Initialize the original trainer
+        trainer = GarfieldTrainer(
+            adata=self.adata,
+            model=self.model,
+            label_name=self.sample_col_,
+            used_pca_feat=self.used_pca_feat_,
+            adj_key=self.adj_key_,
+            edge_val_ratio=self.edge_val_ratio_,
+            edge_test_ratio=self.edge_test_ratio_,
+            node_val_ratio=self.node_val_ratio_,
+            node_test_ratio=self.node_test_ratio_,
+            augment_type=self.augment_type_,
+            num_neighbors=self.num_neighbors_,
+            loaders_n_hops=self.loaders_n_hops_,
+            edge_batch_size=self.edge_batch_size_,
+            node_batch_size=self.node_batch_size_,
+            reload_best_model=self.reload_best_model_,
+            use_early_stopping=self.use_early_stopping_,
+            early_stopping_kwargs=self.early_stopping_kwargs_,
+            monitor=self.monitor_,
+            verbose=self.verbose_,
+            device_id=self.device_id_ if self.device_id_ is not None else 0,
+            seed=self.seed_,
+        )
+
+        # Train the model
+        trainer.train(
+            n_epochs=self.n_epochs_,
+            n_epochs_no_edge_recon=self.n_epochs_no_edge_recon_,
+            learning_rate=self.learning_rate_,
+            weight_decay=self.weight_decay_,
+            gradient_clipping=self.gradient_clipping_,
+            lambda_edge_recon=self.lambda_edge_recon_,
+            lambda_gene_expr_recon=self.lambda_gene_expr_recon_,
+            lambda_latent_adj_recon_loss=self.lambda_latent_adj_recon_loss_,
+            lambda_latent_contrastive_instanceloss=self.lambda_latent_contrastive_instanceloss_,
+            lambda_latent_contrastive_clusterloss=self.lambda_latent_contrastive_clusterloss_,
+            lambda_omics_recon_mmd_loss=self.lambda_omics_recon_mmd_loss_,
+        )
+
+        # Store trainer reference
+        self.trainer = trainer
+
+        # Set model to trained
+        self.is_trained_ = True
+
+        # Store node_batch_size
+        self.node_batch_size_ = trainer.node_batch_size_
+
+        # Compute embeddings
+        print("\n--- COMPUTING LATENT EMBEDDINGS ---")
+        self.adata.obsm[self.latent_key_], _ = self.get_latent_representation(
+            adata=self.adata,
+            adj_key=self.adj_key_,
+            return_mu_std=True,
+            node_batch_size=self.node_batch_size_,
+        )
+        print(f"Embeddings stored in adata.obsm['{self.latent_key_}']")
+
+    def train(self, mode: bool = True, **trainer_kwargs):
+        """
+        Train the Garfield model or set training mode.
+
+        This method overrides torch.nn.Module.train() to provide dual functionality:
+        - If mode=False: Sets model to evaluation mode (PyTorch behavior)
+        - If mode=True with no kwargs: Sets model to training mode (PyTorch behavior)
+        - If mode=True with kwargs: Trains the model using train_legacy()
+
+        Parameters
+        ----------
+        mode : bool
+            If True, sets training mode or trains the model.
+            If False, sets evaluation mode.
+        **trainer_kwargs
+            If provided, triggers actual model training via train_legacy().
+
+        Returns
+        -------
+        self
+            For method chaining.
+
+        Examples
+        --------
+        >>> # Train the model (actual training)
+        >>> model = Garfield({'adata_list': [adata]})
+        >>> model.train()  # Trains the model
+
+        >>> # Set to evaluation mode
+        >>> model.train(False)  # or model.eval()
+
+        >>> # Pass additional trainer kwargs
+        >>> model.train(some_trainer_arg=value)
+        """
+        # If mode is False, set to eval mode (PyTorch behavior)
+        if not mode:
+            return super().train(False)
+
+        # If no trainer_kwargs and mode is True, this is likely actual training request
+        # not just setting training mode
+        if mode and not trainer_kwargs:
+            # Actual training - delegate to train_legacy
+            return self.train_legacy(**trainer_kwargs)
+
+        # If trainer_kwargs provided, definitely training
+        if trainer_kwargs:
+            return self.train_legacy(**trainer_kwargs)
+
+        # Fallback to PyTorch behavior (set training mode)
+        return super().train(True)
 
     # embedding
     def get_latent_representation(
@@ -638,10 +877,12 @@ class Garfield(torch.nn.Module, BaseModelMixin):
         # Initialize latent vectors
         if return_mu_std:
             mu = np.empty(
-                shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype
+                shape=(adata.shape[0], self.bottle_neck_neurons_),
+                dtype=dtype,
             )
             std = np.empty(
-                shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype
+                shape=(adata.shape[0], self.bottle_neck_neurons_),
+                dtype=dtype,
             )
         else:
             z = np.empty(shape=(adata.shape[0], self.bottle_neck_neurons_), dtype=dtype)
@@ -740,12 +981,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             # loss parameters
             "include_edge_recon_loss": dct["include_edge_recon_loss_"],
             "include_gene_expr_recon_loss": dct["include_gene_expr_recon_loss_"],
-            "lambda_latent_contrastive_instanceloss": dct[
-                "lambda_latent_contrastive_instanceloss_"
-            ],
-            "lambda_latent_contrastive_clusterloss": dct[
-                "lambda_latent_contrastive_clusterloss_"
-            ],
+            "lambda_latent_contrastive_instanceloss": dct["lambda_latent_contrastive_instanceloss_"],
+            "lambda_latent_contrastive_clusterloss": dct["lambda_latent_contrastive_clusterloss_"],
             "lambda_gene_expr_recon": dct["lambda_gene_expr_recon_"],
             "lambda_latent_adj_recon_loss": dct["lambda_latent_adj_recon_loss_"],
             "lambda_edge_recon": dct["lambda_edge_recon_"],
@@ -766,6 +1003,8 @@ class Garfield(torch.nn.Module, BaseModelMixin):
             "seed": dct["seed_"],
             "verbose": dct["verbose_"],
             "log_style": dct["log_style_"],
+            "use_lightning": dct["use_lightning_"],
+            "lightning_sampling_mode": dct["lightning_sampling_mode_"],
         }
 
         return init_params

@@ -4,24 +4,51 @@ Example: Multi-GPU Distributed Training with Garfield
 This script demonstrates how to train Garfield on multiple GPUs using
 PyTorch Lightning's DDP (DistributedDataParallel) strategy.
 
+Key Configuration for Multi-GPU:
+    - devices: Number of GPUs to use (e.g., 8 for all A800 GPUs)
+    - strategy: 'ddp_find_unused_parameters_true' (REQUIRED for dual-decoder)
+    - num_workers: 4 workers per GPU for data loading
+    - persistent_workers: True to keep workers alive (faster)
+    - use_lightning: True to enable PyTorch Lightning
+
+IMPORTANT: Garfield uses a dual-decoder architecture (edge + node decoders).
+Not all parameters are used in every forward pass, so we MUST use
+'ddp_find_unused_parameters_true' strategy to avoid DDP errors.
+
 Usage:
-    # Using torchrun (recommended)
-    torchrun --nproc_per_node=4 examples/train_multi_gpu.py
+    # Simple usage (recommended)
+    python examples/train_multi_gpu.py
 
-    # Or with specific GPUs
-    CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node=4 examples/train_multi_gpu.py
+    # Using torchrun for more control
+    torchrun --nproc_per_node=8 examples/train_multi_gpu.py
 
-    # Or let Lightning auto-detect
-    python examples/train_multi_gpu.py  # Uses all available GPUs
+    # With specific GPUs
+    CUDA_VISIBLE_DEVICES=0,1,2,3 python examples/train_multi_gpu.py
+
+Expected Performance (8x A800 GPUs):
+    - ~6-7x speedup compared to single GPU
+    - Automatic gradient synchronization via DDP
+    - Evaluation metrics computed on rank 0 only
 """
 import os
 import sys
 import scanpy as sc
+import torch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import Garfield as gf
 
 # Enable optimized spatial graph construction (5-20x speedup for large datasets)
 os.environ['GARFIELD_USE_OPTIMIZED_GRAPH'] = '1'
+
+# Check GPU availability
+if not torch.cuda.is_available():
+    print("Error: No CUDA GPUs available. This script requires GPUs for multi-GPU training.")
+    exit(1)
+
+num_gpus = torch.cuda.device_count()
+# print(f"Found {num_gpus} CUDA GPU(s) available:")
+# for i in range(num_gpus):
+#     print(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
 
 # Set working directory
 workdir = '/home/zhouwg/data1/project/Garfield_review/Results/result_garfield_multi_gpu'
@@ -39,11 +66,13 @@ if not os.path.exists(adata_path):
     print("Please update adata_path in the script to point to your data.")
     exit(1)
 
+print(f"Loading data from {adata_path}...")
 adata = sc.read_h5ad(adata_path)
 # Ensure adata.X is counts.
 # adata.layers['counts'] = adata.X.copy()
 adata.X = adata.layers['counts'].copy()
-adata.X.max()
+print(f"Data loaded: {adata.shape[0]} cells, {adata.shape[1]} genes")
+print(f"Max count: {adata.X.max()}")
 
 # Configure Garfield parameters for multi-GPU training
 user_config = dict(
@@ -51,7 +80,7 @@ user_config = dict(
     adata_list=adata,
     profile='spatial',  # 'RNA', 'ATAC', 'ADT', 'multi-modal', 'spatial'
     data_type='single-modal',
-    weight=1.0,
+    weight=0.5,
     sample_col=None,  # Column name for batch information
 
     # Preprocessing options
@@ -75,7 +104,7 @@ user_config = dict(
     # Model parameters
     augment_type='dropout',
     svd_q=5,
-    use_FCencoder=False,
+    use_FCencoder=True,
     conv_type='GAT',
     gnn_layer=2,
     hidden_dims=[128, 128],
@@ -86,7 +115,7 @@ user_config = dict(
     num_heads=3,
     dropout=0.2,
     concat=True,
-    used_edge_weight=False,
+    used_edge_weight=True,
     used_DSBN=False,
     used_mmd=False,
 
@@ -94,17 +123,18 @@ user_config = dict(
     num_neighbors=5,
     loaders_n_hops=2,
     edge_batch_size=4096,
-    node_batch_size=1024,
-    num_workers=4,  # Use multiple workers for async data loading (recommended for multi-GPU)
+    node_batch_size=128,
+    num_workers=4,  # 4 workers per GPU for async data loading
+    persistent_workers=True,  # Keep workers alive between epochs (faster)
 
     # Loss parameters
-    include_edge_recon_loss=False,
+    include_edge_recon_loss=True,
     include_gene_expr_recon_loss=True,
     lambda_latent_contrastive_instanceloss=1.0,
     lambda_latent_contrastive_clusterloss=0.5,
-    lambda_gene_expr_recon=10.0,
+    lambda_gene_expr_recon=1.0,
     lambda_edge_recon=1.0,
-    lambda_latent_adj_recon_loss=1.0,
+    lambda_latent_adj_recon_loss=0.0,
     lambda_omics_recon_mmd_loss=5.0,
 
     # Training parameters
@@ -116,8 +146,8 @@ user_config = dict(
 
     # Multi-GPU configuration (NEW Lightning parameters)
     accelerator='gpu',      # Use GPUs
-    # devices=4,              # Use 4 GPUs (adjust based on your system)
-    devices=[1,2,3,4,5,6,7], # Or specify exact GPU IDs
+    devices=8,              # Use 8 GPUs (all available A800 GPUs)
+    # devices=[0,1,2,3],    # Or specify exact consecutive GPU IDs
     # devices='auto',       # Or auto-detect all available GPUs
     num_nodes=1,            # Single-node training (multi-node possible)
     strategy='ddp_find_unused_parameters_true',  # Required for Garfield's dual-decoder architecture
@@ -128,7 +158,7 @@ user_config = dict(
     log_every_n_steps=50,
     checkpoint_dir=None,
     save_top_k=1,
-    save_last=True,
+    save_last=False,  # Don't save every epoch (performance optimization)
 
     # Other parameters
     latent_key='garfield_latent',
@@ -137,6 +167,8 @@ user_config = dict(
     early_stopping_kwargs=None,
     monitor=True,
     seed=42,
+    use_lightning=True,  # Explicitly enable Lightning for multi-GPU
+    log_style='auto',
     verbose=True,
 )
 
@@ -149,7 +181,11 @@ model = gf.Garfield(dict_config)
 
 # Train model (Lightning handles DDP automatically)
 print("Starting multi-GPU training...")
-print(f"Using {user_config['devices']} GPUs with strategy '{user_config['strategy']}'")
+devices_info = user_config['devices']
+if isinstance(devices_info, int):
+    print(f"Using {devices_info} GPUs with strategy '{user_config['strategy']}'")
+else:
+    print(f"Using GPUs {devices_info} with strategy '{user_config['strategy']}'")
 model.train()
 
 # NOTE: In DDP mode, only rank 0 should save the final model

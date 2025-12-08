@@ -66,7 +66,7 @@ def graph_computing_optimized(
     assert model in ["mu_std", "Radius", "KNN"], f"Invalid model: {model}"
 
     if verbose:
-        print(f"------Calculating spatial graph (optimized, model={model})...")
+        print(f"------Calculating spatial graph (model={model})...")
 
     # Determine samples to process
     if batch_key is not None and len(np.unique(adata.obs[batch_key])) > 1:

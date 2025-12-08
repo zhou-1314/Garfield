@@ -152,7 +152,11 @@ def concat_data(
     New merged AnnData.
     """
     if len(data_list) == 1:
-        return read_multi_scData(data_list[0])
+        # Check if it's already an AnnData/MuData object
+        if isinstance(data_list[0], (AnnData, MuData)):
+            return data_list[0]
+        else:
+            return read_multi_scData(data_list[0])
     elif isinstance(data_list, str):
         return read_multi_scData(data_list)
     elif isinstance(data_list, (AnnData, MuData)):

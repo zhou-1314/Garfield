@@ -79,6 +79,7 @@ class GarfieldDataModule(pl.LightningDataModule):
         num_workers: int = 4,
         persistent_workers: bool = False,
         seed: Optional[int] = None,
+        lightning_sampling_mode: str = 'auto',
     ):
         super().__init__()
 
@@ -99,6 +100,7 @@ class GarfieldDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.persistent_workers = persistent_workers
         self.seed = seed
+        self.lightning_sampling_mode = lightning_sampling_mode
 
         # Data objects (populated in setup())
         self.node_masked_data = None
@@ -144,8 +146,10 @@ class GarfieldDataModule(pl.LightningDataModule):
             self.n_nodes_train = self.node_masked_data.train_mask.sum().item()
             self.n_nodes_val = self.node_masked_data.val_mask.sum().item()
             self.n_edges_train = self.edge_train_data.edge_label_index.size(1)
-            self.n_edges_val = (self.edge_val_data.edge_label_index.size(1)
-                               if self.edge_val_data is not None else 0)
+            self.n_edges_val = (
+                self.edge_val_data.edge_label_index.size(1)
+                if self.edge_val_data is not None else 0
+            )
 
             # Auto-compute node batch size if not specified
             if self.node_batch_size is None:
@@ -169,23 +173,61 @@ class GarfieldDataModule(pl.LightningDataModule):
         Create training dataloaders.
 
         Returns DualGraphDataLoader combining edge and node loaders.
-        Each process gets a rank-specific random generator for different sampling.
+        Generator usage depends on lightning_sampling_mode:
+        - 'auto': Use global RNG for single GPU, generator for multi-GPU (default)
+        - 'legacy': Always use generator (matches original Lightning behavior)
+        - 'optimized': Same as 'auto' (explicit fast mode)
 
         Returns
         -------
         DualGraphDataLoader
             Combined edge + node dataloader.
         """
-        # Create rank-specific random generator for DDP
         generator = None
-        if self.seed is not None:
-            # Each rank gets a different seed to sample different subgraphs
-            rank = 0
-            if self.trainer is not None and hasattr(self.trainer, 'global_rank'):
-                rank = self.trainer.global_rank
-            worker_seed = self.seed + rank
-            generator = torch.Generator()
-            generator.manual_seed(worker_seed)
+
+        # Check if we're using distributed training (world_size > 1)
+        is_distributed = (
+            self.trainer is not None
+            and hasattr(self.trainer, "world_size")
+            and self.trainer.world_size > 1
+        )
+
+        # Determine generator based on sampling mode
+        if self.lightning_sampling_mode == 'legacy':
+            # Legacy mode: Always create generator (matches original Lightning)
+            # This reproduces pre-optimization behavior for exact reproducibility
+            if self.seed is not None:
+                rank = 0
+                if is_distributed and hasattr(self.trainer, "global_rank"):
+                    rank = self.trainer.global_rank
+                generator = torch.Generator()
+                generator.manual_seed(self.seed + rank)
+
+        elif self.lightning_sampling_mode == 'optimized':
+            # Optimized mode: Only use generator for multi-GPU
+            # Single GPU uses global RNG (matches original trainer, faster)
+            if is_distributed and self.seed is not None:
+                rank = (
+                    self.trainer.global_rank
+                    if hasattr(self.trainer, "global_rank")
+                    else 0
+                )
+                generator = torch.Generator()
+                generator.manual_seed(self.seed + rank)
+
+        else:  # 'auto' (default)
+            # Auto mode: Smart default behavior
+            # - Single GPU: Use global RNG (matches original trainer)
+            # - Multi-GPU: Use rank-specific generator (correct DDP)
+            if is_distributed and self.seed is not None:
+                rank = (
+                    self.trainer.global_rank
+                    if hasattr(self.trainer, "global_rank")
+                    else 0
+                )
+                generator = torch.Generator()
+                generator.manual_seed(self.seed + rank)
+            # else: generator = None (single GPU uses global RNG)
 
         # Edge-level dataloader (graph reconstruction)
         edge_loader = LinkNeighborLoader(
@@ -228,9 +270,11 @@ class GarfieldDataModule(pl.LightningDataModule):
             Combined edge + node validation dataloader, or None if no validation set.
         """
         # Check if validation set exists
-        if (self.edge_val_data is None or
-            self.edge_val_data.edge_label.sum() == 0 or
-            self.node_masked_data.val_mask.sum() == 0):
+        if (
+            self.edge_val_data is None
+            or self.edge_val_data.edge_label.sum() == 0
+            or self.node_masked_data.val_mask.sum() == 0
+        ):
             return None
 
         # No shuffling or random sampling for validation

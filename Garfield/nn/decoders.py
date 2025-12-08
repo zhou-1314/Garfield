@@ -131,9 +131,7 @@ class GATDecoder(nn.Module):
         torch.Tensor
             Reconstructed node features after passing through the GAT layers and applying normalization (if applicable).
         """
-        edge_index, y, edge_index_all = data.edge_index, data.y, data.edge_attr
-        edge_weight = edge_index_all[:, 2]
-        # edge_weight = torch.ones(edge_index.shape[1]).cpu().numpy()  # 先将张量转移到CPU，再转为numpy
+        edge_index, y, edge_weight = data.edge_index, data.y, data.edge_attr
 
         for idx, layer in enumerate(self.layers):
             x, _ = layer(
@@ -258,9 +256,7 @@ class GCNDecoder(nn.Module):
         torch.Tensor
             Reconstructed node features after passing through the GCN layers and applying normalization (if applicable).
         """
-        edge_index, y, edge_index_all = data.edge_index, data.y, data.edge_attr
-        edge_weight = edge_index_all[:, 2]
-        # edge_weight = torch.ones(edge_index.shape[1]).cpu().numpy()  # 先将张量转移到CPU，再转为numpy
+        edge_index, y, edge_weight = data.edge_index, data.y, data.edge_attr
 
         ### latent
         for idx, layer in enumerate(self.gcn_layers):

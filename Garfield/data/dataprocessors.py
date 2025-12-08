@@ -93,12 +93,11 @@ def edge_level_split(
 
     # Readd self loops for message passing
     for split_data in [train_data, val_data, test_data]:
-        split_data.edge_index = add_self_loops(
-            edge_index=split_data.edge_index, num_nodes=split_data.x.shape[0]
-        )[0]
-        split_data.edge_attr = add_self_loops(
-            edge_index=split_data.edge_attr.t(), num_nodes=split_data.x.shape[0]
-        )[0].t()
+        split_data.edge_index, split_data.edge_attr = add_self_loops(
+            edge_index=split_data.edge_index,
+            edge_attr=split_data.edge_attr,
+            num_nodes=split_data.x.shape[0]
+        )
     return train_data, val_data, test_data
 
 
@@ -191,21 +190,24 @@ def prepare_data(
     assert (
         dataset.edge_index.shape[1] == dataset.edge_weight.shape[0]
     ), "Mismatch in the number of edges between edge_index and edge_weight"
+    if hasattr(dataset, "edge_weight") and dataset.edge_weight is not None:
+        edge_attr = dataset.edge_weight.squeeze()
+    else:
+        edge_attr = None
+
     data_node = Data(
         x=dataset.x,
         y=dataset.y,
         edge_index=dataset.edge_index,
-        edge_attr=torch.concat([dataset.edge_index.t(), dataset.edge_weight], dim=-1),
-    )  # store index of edge nodes as
-    # edge attribute for aggregation weight retrieval in mini batches
+        edge_attr=edge_attr,
+    )
 
     data_edge = Data(
         x=dataset.x,
         y=dataset.y,
         edge_index=dataset.edge_index,
-        edge_attr=dataset.edge_index.t(),
-    )  # store index of edge nodes as
-    # edge attribute for aggregation weight retrieval in mini batches
+        edge_attr=edge_attr,
+    )
 
     # Edge-level split for edge reconstruction
     edge_train_data, edge_val_data, edge_test_data = edge_level_split(

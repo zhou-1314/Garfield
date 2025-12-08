@@ -243,10 +243,14 @@ class GarfieldConfig:
             # Dataloader parameters
             "num_workers": 0,  # Number of dataloader workers per device
             "persistent_workers": False,  # Keep workers alive between epochs
+            "accumulate_grad_batches": 1,  # Gradient accumulation steps (1 = no accumulation)
             # Logging parameters
             "logger": "tensorboard",  # 'tensorboard', 'wandb', 'csv', None
             "log_every_n_steps": 50,  # Logging frequency
             "log_style": "auto",  # 'auto', 'notebook', 'lightning' - controls progress bar style
+            # Training backend selection
+            "use_lightning": "auto",  # 'auto', True, False - whether to use PyTorch Lightning trainer
+            "lightning_sampling_mode": "auto",  # 'auto', 'legacy', 'optimized' - controls random sampling behavior
             # Checkpoint parameters
             "checkpoint_dir": None,  # If None, uses workdir/checkpoints
             "save_top_k": 1,  # Number of best models to keep
