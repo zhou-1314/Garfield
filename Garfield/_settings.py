@@ -241,7 +241,7 @@ class GarfieldConfig:
             "strategy": "auto",  # 'auto', 'ddp', 'ddp_spawn', etc.
             "precision": "32",  # '32', '16-mixed', 'bf16-mixed'
             # Dataloader parameters
-            "num_workers": 0,  # Number of dataloader workers per device
+            "num_workers": 4,  # Number of dataloader workers per device
             "persistent_workers": False,  # Keep workers alive between epochs
             "accumulate_grad_batches": 1,  # Gradient accumulation steps (1 = no accumulation)
             # Logging parameters

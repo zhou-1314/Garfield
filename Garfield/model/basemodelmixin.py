@@ -149,14 +149,55 @@ class BaseModelMixin:
             Model with loaded state dictionaries and, if specified, frozen non
             add-on weights.
         """
-        use_cuda = use_cuda and torch.cuda.is_available()
+        # Safely check CUDA availability with error handling
+        if use_cuda:
+            try:
+                use_cuda = torch.cuda.is_available()
+                if use_cuda:
+                    # Verify CUDA actually works by trying to get device count
+                    _ = torch.cuda.device_count()
+            except RuntimeError as e:
+                # CUDA initialization failed, fall back to CPU
+                warnings.warn(
+                    f"CUDA is not properly initialized (error: {e}). "
+                    f"Falling back to CPU for model loading.",
+                    RuntimeWarning
+                )
+                use_cuda = False
+
         map_location = torch.device("cpu") if use_cuda is False else None
 
-        model_state_dict, var_names, attr_dict, new_adata = (
-            load_saved_files(dir_path=dir_path,
-                             query_adata=query_adata,
-                             ref_adata_name=adata_file_name,
-                             map_location=map_location))
+        try:
+            model_state_dict, var_names, attr_dict, new_adata = (
+                load_saved_files(
+                    dir_path=dir_path,
+                    query_adata=query_adata,
+                    ref_adata_name=adata_file_name,
+                    map_location=map_location,
+                )
+            )
+        except RuntimeError as e:
+            # CUDA can still fail at load time even if is_available() passed
+            # (e.g. driver mismatch). Retry on CPU to avoid hard failure.
+            cuda_error = "cuda" in str(e).lower() or "device" in str(e).lower()
+            if map_location is None and cuda_error:
+                warnings.warn(
+                    f"Encountered CUDA error during model load ({e}). "
+                    f"Retrying on CPU.",
+                    RuntimeWarning,
+                )
+                use_cuda = False
+                map_location = torch.device("cpu")
+                model_state_dict, var_names, attr_dict, new_adata = (
+                    load_saved_files(
+                        dir_path=dir_path,
+                        query_adata=query_adata,
+                        ref_adata_name=adata_file_name,
+                        map_location=map_location,
+                    )
+                )
+            else:
+                raise
 
         validate_var_names(new_adata, var_names)
 
