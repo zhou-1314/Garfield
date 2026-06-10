@@ -182,7 +182,7 @@ def compute_contrastive_instanceloss(z_i, z_j, temperature):
     return loss
 
 
-def compute_contrastive_clusterloss(c_i, c_j, class_num, temperature):
+def compute_contrastive_clusterloss(c_i, c_j, class_num, temperature, include_entropy=True):
     """
     Cluster loss function.
 
@@ -191,6 +191,9 @@ def compute_contrastive_clusterloss(c_i, c_j, class_num, temperature):
         c_j (torch.Tensor): Second set of cluster probabilities.
         class_num (int): Number of classes.
         temperature (float): Temperature scaling factor.
+        include_entropy (bool): If False, drop the cluster-assignment entropy
+            regularizer H(Y) (the ``ne_loss`` term). Used for the H(Y) ablation
+            requested by reviewers. Default True preserves original behavior.
         device (torch.device): The device to perform computations on.
 
     Returns:
@@ -245,7 +248,9 @@ def compute_contrastive_clusterloss(c_i, c_j, class_num, temperature):
     loss = criterion(logits, labels)
     loss /= N
 
-    return loss + ne_loss
+    if include_entropy:
+        return loss + ne_loss
+    return loss
 
 
 ### mmd function
