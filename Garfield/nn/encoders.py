@@ -155,7 +155,9 @@ class GATEncoder(nn.Module):
             self.layers.append(layer)
             current_dim = hidden_dim * num_heads if concat else hidden_dim
 
-        # Initialize the final mean and log standard deviation layers
+        # Garfield's training forward pass uses conv_mean and recomputes logstd
+        # from mu in GNNModelVAE (R3.3). conv_log_std is retained only for backward
+        # compatibility with the canonical VGAE-style encoder return signature.
         self.conv_mean = GATLayer(
             in_channels=current_dim,
             out_channels=latent_dim,

@@ -22,6 +22,15 @@ from .loss import (
     compute_adj_recon_loss,
 )
 
+# Fixed loss-normalization constants (R3.4). They rescale mean-reduced loss terms to
+# comparable magnitudes BEFORE the lambda weighting and are absorbed into the *effective*
+# lambda; set once, not tuned per dataset. FEATURE_RECON_SCALE ~= concatenated input
+# feature dimension (restores a per-observation sum-over-features scale for the mean-reduced
+# MSE); the edge/adj factors rebalance the edge-averaged graph terms against node-level terms.
+EDGE_RECON_NODE_SCALE_DIVISOR = 10.0
+FEATURE_RECON_SCALE = 20000.0
+LATENT_ADJ_RECON_SCALE = 100.0
+
 # Based on VGAE class in PyTorch Geometric
 class GNNModelVAE(GAE):
     """
@@ -99,6 +108,13 @@ class GNNModelVAE(GAE):
         self.used_mmd = used_mmd
         self.conv_type = conv_type
         self.cluster_num = cluster_num
+        # Ablation toggles (default True -> original behavior). Set these on the
+        # instantiated module to drop individual modules for ablation studies.
+        # Note: the instance/cluster contrastive "lambda" is a *temperature*, not
+        # a linear weight, so these terms cannot be ablated via lambda=0.
+        self.include_instance_loss = True
+        self.include_cluster_loss = True
+        self.include_cluster_entropy = True  # drop H(Y) only
         assert self.conv_type in [
             "GAT",
             "GATv2Conv",
@@ -372,7 +388,7 @@ class GNNModelVAE(GAE):
                 )
             )
             * edge_model_output["mu"].size(0)
-            / 10
+            / EDGE_RECON_NODE_SCALE_DIVISOR
         )
 
         # 3. Compute gene expression reconstruction with MSE loss for node batch
@@ -382,7 +398,7 @@ class GNNModelVAE(GAE):
                 recon_x=node_model_output["recon_features"],
                 x=node_model_output["truth_x"],
             )
-        ) * 20000  # node_model_output['truth_x'].size(-1)
+        ) * FEATURE_RECON_SCALE  # approximately restores feature-sum scale
 
         # 4. compute reconstructed adj loss through node feedforward
         loss_dict["lambda_latent_adj_recon_loss"] = (
@@ -391,8 +407,8 @@ class GNNModelVAE(GAE):
                 node_model_output["neg_adj"],
                 lambda_latent_adj_recon_loss,
             )
-            * 100
-        )  # * node_model_output['truth_x'].size(-1)
+            * LATENT_ADJ_RECON_SCALE
+        )
 
         # 5. compute Contrastive instance losses
         loss_dict[
@@ -410,6 +426,7 @@ class GNNModelVAE(GAE):
             node_model_output["c_2"],
             self.cluster_num,
             lambda_latent_contrastive_clusterloss,
+            include_entropy=self.include_cluster_entropy,
         )
 
         # 7. compute MMD loss
@@ -453,18 +470,20 @@ class GNNModelVAE(GAE):
             loss_dict["optim_loss"] += loss_dict["gene_expr_recon_loss"]
             loss_dict["global_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
             loss_dict["optim_loss"] += loss_dict["lambda_latent_adj_recon_loss"]
-            loss_dict["global_loss"] += loss_dict[
-                "lambda_latent_contrastive_instanceloss"
-            ]
-            loss_dict["optim_loss"] += loss_dict[
-                "lambda_latent_contrastive_instanceloss"
-            ]
-            loss_dict["global_loss"] += loss_dict[
-                "lambda_latent_contrastive_clusterloss"
-            ]
-            loss_dict["optim_loss"] += loss_dict[
-                "lambda_latent_contrastive_clusterloss"
-            ]
+            if self.include_instance_loss:
+                loss_dict["global_loss"] += loss_dict[
+                    "lambda_latent_contrastive_instanceloss"
+                ]
+                loss_dict["optim_loss"] += loss_dict[
+                    "lambda_latent_contrastive_instanceloss"
+                ]
+            if self.include_cluster_loss:
+                loss_dict["global_loss"] += loss_dict[
+                    "lambda_latent_contrastive_clusterloss"
+                ]
+                loss_dict["optim_loss"] += loss_dict[
+                    "lambda_latent_contrastive_clusterloss"
+                ]
             if self.used_mmd:
                 loss_dict["global_loss"] += loss_dict["gene_expr_mmd_loss"]
                 loss_dict["optim_loss"] += loss_dict["gene_expr_mmd_loss"]
