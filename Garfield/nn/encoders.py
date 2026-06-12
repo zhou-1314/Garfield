@@ -402,8 +402,10 @@ class GCNEncoder(nn.Module):
                 GCNConv(total_layers[i], total_layers[i + 1], dropout=dropout)
             )
 
-        # Initialize mean and log standard deviation layers
         self.gcn_mu = GCNConv(hidden_dims[-1], latent_dim, dropout=dropout)
+        # Deprecated compatibility head: Garfield recomputes logstd from mu in
+        # GNNModelVAE and does not use this value for training or reported
+        # inference embeddings.
         self.gcn_logvar = GCNConv(hidden_dims[-1], latent_dim, dropout=dropout)
 
         # Initialize normalization layers
