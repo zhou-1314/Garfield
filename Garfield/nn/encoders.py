@@ -156,8 +156,8 @@ class GATEncoder(nn.Module):
             current_dim = hidden_dim * num_heads if concat else hidden_dim
 
         # Garfield's training forward pass uses conv_mean and recomputes logstd
-        # from mu in GNNModelVAE (R3.3). conv_log_std is retained only for backward
-        # compatibility with the canonical VGAE-style encoder return signature.
+        # from mu in GNNModelVAE. conv_log_std is retained only as a deprecated
+        # compatibility output for the canonical VGAE-style encoder signature.
         self.conv_mean = GATLayer(
             in_channels=current_dim,
             out_channels=latent_dim,
@@ -312,6 +312,9 @@ class GCNEncoder(nn.Module):
             )
 
         self.gcn_mu = GCNConv(hidden_dims[-1], latent_dim, dropout=dropout)
+        # Deprecated compatibility head: Garfield recomputes logstd from mu in
+        # GNNModelVAE and does not use this value for training or reported
+        # inference embeddings.
         self.gcn_logvar = GCNConv(hidden_dims[-1], latent_dim, dropout=dropout)
 
         for current_dim in hidden_dims:
