@@ -22,4 +22,4 @@ D1 真π诊断：RNA s=.281254、θ8=.067367；joint s=.378275、θ8=.093114。D
 本轮无空间坐标、未训练 SpaMOT、未运行官方 MICSQTL/DestVI；测试仅两供体，伪点与 seed 为技术重复。7 的独立复核已关闭 B3，复核原件见[review](2026-09-08-p0-p2-execution-review.md)。建议下一轮优先在新供体或独立数据确认D3，补齐模态-only、静态/收缩与可比官方基线；如简单方案仍有明确未解决缺口，再决定动态gate/参考适配新模型投入。均未执行，P3另行批准。一次负结果不证明细层不可识别，也不自动证明神经模型必要。
 
 ## 证据与复现
-[名义等权主表](summary_macro_scenario_equal_weight.csv) · P2逐行结果不随PR分发（按复现步骤生成） · [运行清单](manifest_p2.json) · [P2 README](README.md) · [P2 修订记录](REVISIONS.md) · [P1 审计报告](2026-09-08-p1-baseline-audit-report.md) · [P1 逐行表](results_p1_per_row.csv)。
+[名义等权主表](summary_macro_scenario_equal_weight.csv) · P2逐行结果不随PR分发（按复现步骤生成） · [运行清单](manifest_p2.json) · [P2 README](README.md) · [P2 修订记录](REVISIONS.md) · [P1 审计报告](2026-09-08-p1-baseline-audit-report.md) · P1 逐行表不随 PR 分发（按复现步骤生成）。
