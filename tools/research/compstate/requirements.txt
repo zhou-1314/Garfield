@@ -1,0 +1,7 @@
+# Minimal, pinned to the versions this package was developed and verified against.
+# Lower bounds only -- no new dependency was introduced for this port.
+numpy>=1.26.4
+pandas>=2.3.3
+scipy>=1.15.3
+# NOT required: tabulate (tables are emitted with DataFrame.to_string on purpose).
+# Note: run_p2.py reports peak RSS via the stdlib `resource` module, which is POSIX-only.

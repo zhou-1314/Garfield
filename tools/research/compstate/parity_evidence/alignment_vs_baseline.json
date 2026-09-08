@@ -1,0 +1,13 @@
+{
+ "baseline_rows_compared": 400,
+ "regenerated_spots": 2640,
+ "cell_idx_hash_match": 400,
+ "cell_idx_hash_mismatch": 0,
+ "key_missing_in_regen": 0,
+ "max_abs_pi_diff": 4.997537250156503e-05,
+ "max_abs_s_diff": 4.979441359698189e-05,
+ "tol": 0.0001,
+ "mismatch_examples": [],
+ "verdict": "ALIGNED",
+ "note": "baseline stores 4 decimals => ~5e-5 is the storage-precision floor"
+}

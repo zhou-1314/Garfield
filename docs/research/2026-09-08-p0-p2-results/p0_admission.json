@@ -1,0 +1,398 @@
+{
+ "summary": {
+  "n_checks": 16,
+  "n_fail": 0,
+  "n_unknown": 2,
+  "admission": "PASS_WITH_UNKNOWNS"
+ },
+ "checks": {
+  "A.file_sha256": {
+   "status": "PASS",
+   "detail": {
+    "pilot_counts.npz": "737bee8de2a67f5bc9f1495b0f0bb6f96ff329e70a4ed5315bb6deda9e303882",
+    "pilot_cells.csv": "53d427b254f5692370e99571958a76d7caaa27872a0b9e0b2332be430beeb046",
+    "export_pilot_subset.py": "936ec24ddd5385ece9a4d4fbccac0f562ec791a474caf7a19ee3ef05a4c01fe5",
+    "pilot_export_qc.json": "83c57415297f1913a2e2f1eeb67a9b53ae5f3f185abbbcd16e3f283badf022fa"
+   }
+  },
+  "B.cell_order_npz_vs_csv": {
+   "status": "PASS",
+   "detail": "n_cells=18624; npz['cells'] == cells.cell_id -> True"
+  },
+  "B.cell_id_unique": {
+   "status": "PASS",
+   "detail": "duplicated cell_id = 0"
+  },
+  "C.RNA_raw_nonneg_integer": {
+   "status": "PASS",
+   "detail": "nnz=38949364 neg=0 non_integer=0 nonfinite=0 row_in_range=True col_in_range=True min=1 max=7456"
+  },
+  "C.ADT_raw_nonneg_integer": {
+   "status": "PASS",
+   "detail": "nnz=3878461 neg=0 non_integer=0 nonfinite=0 row_in_range=True col_in_range=True min=1 max=16315"
+  },
+  "D.donor_split_disjoint": {
+   "status": "PASS",
+   "detail": "donors_in_data=['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'] split={'train': ['P1', 'P2', 'P5', 'P6'], 'val': ['P3', 'P7'], 'test': ['P4', 'P8']} double_assigned=[] unassigned=[]"
+  },
+  "D.cells_per_donor": {
+   "status": "PASS",
+   "detail": {
+    "P1": 2224,
+    "P2": 2233,
+    "P3": 2232,
+    "P4": 2400,
+    "P5": 2400,
+    "P6": 2400,
+    "P7": 2400,
+    "P8": 2335
+   }
+  },
+  "E.ref_gen_pool_disjoint": {
+   "status": "PASS",
+   "detail": "ref_cells=9312 gen_cells=9312 overlap=0 (seed=20260907, frac=0.5, drawn within donor x subtype)"
+  },
+  "E.cells_unlabelled_in_8_subtypes": {
+   "status": "PASS",
+   "detail": "cells outside the 8 target subtypes = 0 ; nan_map=0"
+  },
+  "F.per_donor_subtype_pool_sizes": {
+   "status": "PASS",
+   "detail": {
+    "min_ref_cells": 62,
+    "min_gen_cells": 62,
+    "table": {
+     "train/P1": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 62,
+       "gen": 62
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "train/P2": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 66,
+       "gen": 67
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "train/P5": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "train/P6": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "val/P3": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 66,
+       "gen": 66
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "val/P7": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "test/P4": {
+      "B naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "B memory": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     },
+     "test/P8": {
+      "B naive": {
+       "ref": 118,
+       "gen": 117
+      },
+      "B memory": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD4 TCM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 TEM": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD8 Naive": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD14 Mono": {
+       "ref": 150,
+       "gen": 150
+      },
+      "CD16 Mono": {
+       "ref": 150,
+       "gen": 150
+      }
+     }
+    }
+   }
+  },
+  "G.reference_provenance": {
+   "status": "PASS",
+   "detail": {
+    "B naive": {
+     "n_cells": 600,
+     "cell_id_sha256": "765766b4eab97d44e535ec016e0e131ea4ecf074b81854ce46c76cbcfeca34d9"
+    },
+    "B memory": {
+     "n_cells": 428,
+     "cell_id_sha256": "a3b345132091280dcac98db2fc86d1f4235e3d4740ef943d8b2fe87d90b6aad0"
+    },
+    "CD4 Naive": {
+     "n_cells": 600,
+     "cell_id_sha256": "e1302cb6e754f8f3a5af2faf24cae9292f6837b16bcf6d3abd69643b13139b6c"
+    },
+    "CD4 TCM": {
+     "n_cells": 600,
+     "cell_id_sha256": "ac03a7151ded4262d248cc831d37ba4e64336ec283f552adc5e474b7df8d4ddb"
+    },
+    "CD8 TEM": {
+     "n_cells": 600,
+     "cell_id_sha256": "c8de505d978c25f8443d0bae79e7574bf6a7a403a926103eb0494a1fe30bf483"
+    },
+    "CD8 Naive": {
+     "n_cells": 600,
+     "cell_id_sha256": "ab57981267b8d5f859bf459dca5b0de0187e2a4fafef28aceff9fdfa3c49a5a2"
+    },
+    "CD14 Mono": {
+     "n_cells": 600,
+     "cell_id_sha256": "f23fce68ecd01904559a323bc50b5dc514021ccd6fc091be59d7dd2ed6c53202"
+    },
+    "CD16 Mono": {
+     "n_cells": 600,
+     "cell_id_sha256": "f5b963607f71b3ce9701f97539cf02e6ed4d06b7ae48f3007f2074b6ef9bf7c8"
+    }
+   }
+  },
+  "G.hierarchy_hash": {
+   "status": "PASS",
+   "detail": "9bca89a6ba7980d93271c372b2cfb934d93adaa71846d488fd199d83231422f8"
+  },
+  "H.S0_actual_cells_per_spot": {
+   "status": "PASS",
+   "detail": "nominal n_cells_per_spot=50 but banker's rounding round(0.25*50)=round(12.5)=12 per coarse type -> ACTUAL total = 48, per-type (first,second) = {'B': (6, 6), 'CD4 T': (6, 6), 'CD8 T': (6, 6), 'Mono': (6, 6)}. S0 must be reported as 48 cells/spot, NEVER as 50."
+  },
+  "I.source_licence": {
+   "status": "UNKNOWN",
+   "detail": "GSE164378 (Hao et al. Cell 2021) redistribution terms NOT verified in this session. Local files were exported on 2026-09-07 from previously downloaded GEO supplementary matrices. No licence file present in the pilot-data directory. Recorded as UNKNOWN, not asserted as permissive."
+  },
+  "I.adt_metadata_discrepancy": {
+   "status": "UNKNOWN",
+   "detail": "meta_nCount_ADT disagrees with exported raw ADT sums (only 297/18,624 matched in the 9/7 audit); isotype-exclusion hypothesis was falsified. Source of the difference UNDETERMINED. Raw exported counts are treated as authoritative for this round, as in the 9/7 run."
+  },
+  "J.stale_solver_string_in_9_7_config": {
+   "status": "NOTE",
+   "detail": "run_compstate_pilot.py CFG['solver'] still reads 'nnls on library-normalised profiles' -- that string predates the RAW-scale correction and does NOT describe the executed code (CFG['estimand'] and the code itself are RAW-scale). The 9/7 artefact is FROZEN and NOT edited; the 9/8 diagnostics carry the corrected solver description."
+  }
+ }
+}

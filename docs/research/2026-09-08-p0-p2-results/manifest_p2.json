@@ -1,0 +1,268 @@
+{
+ "smoke": false,
+ "rows": 73920,
+ "runtime_compute_sec": 16.7,
+ "runtime_load_and_setup_sec": 13.6,
+ "runtime_total_in_process_sec": 30.3,
+ "runtime_note": "compute = exact checks + main loop only; load_and_setup = npz->dense, pools, references, feature selection. Total process wall is their sum; the shell-measured wall is slightly larger (interpreter start + imports). These are DISTINCT fields and must not be reported as one number.",
+ "peak_rss_mb": 3364.6,
+ "threads": {
+  "OMP_NUM_THREADS": "4",
+  "MKL_NUM_THREADS": "4",
+  "OPENBLAS_NUM_THREADS": "4"
+ },
+ "numpy": "1.26.4",
+ "pandas": "2.3.3",
+ "python": "3.10.14",
+ "cfg": {
+  "split": {
+   "train": [
+    "P1",
+    "P2",
+    "P5",
+    "P6"
+   ],
+   "val": [
+    "P3",
+    "P7"
+   ],
+   "test": [
+    "P4",
+    "P8"
+   ]
+  },
+  "coarse": {
+   "Mono": [
+    "CD14 Mono",
+    "CD16 Mono"
+   ],
+   "CD4 T": [
+    "CD4 Naive",
+    "CD4 TCM"
+   ],
+   "CD8 T": [
+    "CD8 TEM",
+    "CD8 Naive"
+   ],
+   "B": [
+    "B naive",
+    "B memory"
+   ]
+  },
+  "ref_pool_frac": 0.5,
+  "ref_seed": 20260907,
+  "n_cells_per_spot": 50,
+  "n_spots": 40,
+  "seeds": [
+   1,
+   2,
+   3
+  ],
+  "n_genes": 1500,
+  "depth_thin": 1.0,
+  "adt_dropout": 0.0,
+  "s_S0": 0.5,
+  "pi0": [
+   0.25,
+   0.25,
+   0.25,
+   0.25
+  ],
+  "S1_delta": [
+   -0.15,
+   0.0,
+   0.15
+  ],
+  "S2_eta": [
+   -0.3,
+   0.0,
+   0.3
+  ],
+  "S3_delta": [
+   -0.15,
+   0.15
+  ],
+  "S3_eta": [
+   -0.3,
+   0.3
+  ],
+  "lam_adt": 1.0,
+  "rho_mult": 1000.0,
+  "constraint_tol": 1e-06,
+  "norm_convention": "np.linalg.norm on a 2-D array = FROBENIUS norm (block weighting and rho scaling)",
+  "solver": "scipy.optimize.nnls on RAW-scale blocks. References are per-subtype MEAN PER-CELL RAW counts; the response is the RAW pseudo-spot count vector. For D1/D3 a homogeneous penalty block enforces coarse proportions only; the total is fitted freely. (This supersedes the stale 'library-normalised' string left in the 9/7 config, which did not describe the 9/7 executed code either.)",
+  "coefficient_interpretation": "NNLS coefficients admit a cell-count-scale reading ONLY UNDER the working assumption that the reference scale matches the measurement conditions of the assayed sample. That assumption is UNPROVEN here -- capture efficiency, background and composition may still differ across donors and reference pools, and whether it holds is part of what D2 diagnoses. No unconditional claim that coefficients ARE cell counts."
+ },
+ "reference_arms": {
+  "cross_full|None": {
+   "per_subtype_cells": [
+    600,
+    428,
+    600,
+    600,
+    600,
+    600,
+    600,
+    600
+   ],
+   "hash": "15d8d995af5c45fb"
+  },
+  "same_donor|P3": {
+   "per_subtype_cells": [
+    150,
+    66,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "1a0f6052596ab692"
+  },
+  "cross_matched|P3": {
+   "per_subtype_cells": [
+    150,
+    66,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "8b837d51ebd7f008"
+  },
+  "same_donor|P7": {
+   "per_subtype_cells": [
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "504113cf53b5eeba"
+  },
+  "cross_matched|P7": {
+   "per_subtype_cells": [
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "79eb0fc612ebf1d9"
+  },
+  "same_donor|P4": {
+   "per_subtype_cells": [
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "f54d10f2150519a9"
+  },
+  "cross_matched|P4": {
+   "per_subtype_cells": [
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "d298fe5223daf582"
+  },
+  "same_donor|P8": {
+   "per_subtype_cells": [
+    118,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "4323aa74f378ce9c"
+  },
+  "cross_matched|P8": {
+   "per_subtype_cells": [
+    118,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150,
+    150
+   ],
+   "hash": "46ae9a0a331f6e33"
+  }
+ },
+ "hierarchy_hash": "9bca89a6ba7980d93271c372b2cfb934d93adaa71846d488fd199d83231422f8",
+ "n_genes_selected": 1500,
+ "input_sha256": {
+  "../2026-09-07-composition-state-pilot-data/pilot_counts.npz": "737bee8de2a67f5bc9f1495b0f0bb6f96ff329e70a4ed5315bb6deda9e303882",
+  "../2026-09-07-composition-state-pilot-data/pilot_cells.csv": "53d427b254f5692370e99571958a76d7caaa27872a0b9e0b2332be430beeb046"
+ },
+ "old_artefact_sha256": {
+  "../2026-09-07-composition-state-pilot-analysis/results_compstate.csv": "9a1c7d8efd80dd4ac384311edfa5a7a6396647a74646a3caaedd942e21feee18",
+  "../2026-09-07-composition-state-pilot-analysis/run_compstate_pilot.py": "c75a06f0cb960a6d64cd6dcacebe3f9a92974092be362d143a03b7dca313f5c0"
+ },
+ "code_sha256": {
+  "run_p2_diagnostics.py": "a64a0286fe01bfa775a6af7f6800e2289688d6dbcbb83ba363ecc61f37bbf452",
+  "p0_admission.py": "32936a93aeb566f2fbe46c82d00d36a746c8710485b43919fd7abd3ee4fc4ee8",
+  "verify_alignment.py": "c739c147284a5d58aa42c1544b78abd5e48dd283b2ad197c66725be93bcdce75",
+  "summarize_p2.py": "ba3ae4d7bc1359b2b7cc67a14b812768e4639303f23c4c0fe17ec62184b1800b",
+  "freeze_manifest.py": "14135476134f91addc23e359a67e206f10e742d82d5cf1c2b0f9fa44f99bfe9e",
+  "PROTOCOL_FROZEN.md": "d42d95261c0b01367110122907a9f290ea15b0796076c5bd40ece0f8348fdc6d",
+  "README.md": "f41b6e812151d63fee50c69b36c39d57d89517115c160776d5ffddd61444327d",
+  "REVISIONS.md": "6a5cb96c76f57bedd2356c44941d9084535d273d418a1aa474b67db3510a8d22"
+ },
+ "note": "nominal arm only (depth_thin=1.0, adt_dropout=0.0); spots identical to the 9/7 nominal arm by construction",
+ "output_sha256": {
+  "results_p2.csv": "9bf1c34339aeefb82a289de68d7eb6b41eac26e0657911ea7217ffc073494d82",
+  "results_p2_rev0.csv": "9bf1c34339aeefb82a289de68d7eb6b41eac26e0657911ea7217ffc073494d82",
+  "failures_p2.csv": "e9063a7d68dc48c31ece8572c940c8c283a1f1bf76d1fc8ed04507d2eddf9ec6",
+  "counts_p2.json": "251e6d211104e9fc57222030a8100aa556831288c268ae54bac44792bdb522be",
+  "exact_checks.json": "3462d8ce7b66263129116ece9d77e3f0ee3872f62140dfcaac348eb65d89151e",
+  "alignment_vs_9_7.json": "e4d39f3850b361ca4214a5eec6f690a7e39919bc5db6c1a809febabc9467babd",
+  "p0_admission.json": "5c12cb5e1261a7b47ec1655500941ef5b32bb6dc98a213dd826b95118bc67195",
+  "RESULTS_P2.md": "1ee1fd0fd86d00cad26ec3bff4671f898dcb2e347ac5bb99244a41ae1a96e440",
+  "run_log.txt": "f429e9a01ef04ca36d6381ab2a1d734f41d5b88e1672c1b75875bb44475c7665",
+  "summary_macro_scenario_equal_weight.csv": "c4a76820ea6a2d721984a92a3e220aad7ffe19a4421ad9ab6cc2950bf0ed9ec5",
+  "summary_macro_row_weight.csv": "3e3f2d60d1627a660bce6178f33e29bd04068b42f5ca07f2fe894680e763f4ca",
+  "summary_per_donor.csv": "9ca3c5e6ae42d3d2b560fa7be03e44debe3ba4db663ff47f75e1242cc9bc7904",
+  "summary_by_type.csv": "7ac4885fa6c29d5c8ac1a7becb7cf270f5dd20bfd08aa4edee47516adfb6b1f1",
+  "summary_by_scenario.csv": "663193f663318c67c6c3021567a8cfec77dcdf5543bff761993b20b29238e755",
+  "summary_spot_level.csv": "41cff5b89ccb9481049f946fb9887ea9ec50c0d031153480e8cfc540b5af05c6",
+  "summary_constraint_residual.csv": "024d084d930ccb66fc588318127860e7dd9d7a5521537d078d08ea10358e8f6a",
+  "summary_s_support.csv": "f3a48c8c57f826372e4a547d8c264084b912eab75694237a19d224f9b6a1bd19"
+ },
+ "frozen_at": "2026-09-08T02:03:02.868850+00:00",
+ "hash_semantics": "SHA256 recorded at freeze time for drift detection. There is NO historical gold value to compare against, so these hashes do NOT constitute a passed comparison. Inputs under the 9/7 directories were read-only and are unmodified.",
+ "caliber_note": "Main report uses SCENARIO-EQUAL-WEIGHT. When tabulating alongside P1, both sides need only pick the SAME caliber; P1 already ships both (tables_p1_calibers_comparison.csv: cal1=scenario-equal-weight, cal2=row-weight).",
+ "unit_note": "summary_s_support.csv rows/s_defined = 5280 = COARSE-TYPE EVALUATIONS per (arm,split) = 1320 spots x 4 coarse types. The SPOT count is 1320. Do not conflate the two units.",
+ "path_note": "input_sha256 / old_artefact_sha256 keys are RELATIVE PATHS from this directory, so the four external files can be located from the manifest alone.",
+ "independent_review": {
+  "reviewer": "spamot-7 (not the author)",
+  "file": "/root/.ao/data/worktrees/spamot/spamot-7/docs/research/2026-09-08-p0-p2-execution-review.md",
+  "sha256": "03f7d6ffa76e2ed2eb44f5ceaece97956452de262dc9e2bcd77f81adf193f896",
+  "verified_by_me": true,
+  "status": "B-3 closed; all top items accept",
+  "meaning": "accept = executed per protocol and independently reproducible; NOT that any model is effective, incremental, or extrapolable"
+ }
+}

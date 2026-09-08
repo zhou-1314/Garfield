@@ -1,0 +1,9 @@
+# Large/private research inputs and generated tables (not redistributed)
+*.npz
+*.h5
+*.h5ad
+*per_row*.csv
+*raw*.csv
+*metadata*.csv
+*.mtx.gz
+*.png

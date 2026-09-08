@@ -1,0 +1,81 @@
+########## p0_admission.py --help ##########
+usage: p0_admission.py [-h] [--data-dir DATA_DIR] [--output-dir OUTPUT_DIR]
+
+P0 data admission checks.  Reports PASS / FAIL / UNKNOWN / NOTE.
+UNKNOWN is recorded verbatim and never upgraded to PASS.
+
+options:
+  -h, --help            show this help message and exit
+  --data-dir DATA_DIR   directory with the raw inputs
+  --output-dir OUTPUT_DIR
+                        where p0_admission.json is written
+
+########## run_p2.py --help ##########
+usage: run_p2.py [-h] [--data-dir DATA_DIR] [--output-dir OUTPUT_DIR]
+                 [--smoke] [--seeds SEEDS [SEEDS ...]] [--n-spots N_SPOTS]
+                 [--n-genes N_GENES] [--threads THREADS]
+
+P2 diagnostics D1 / D2 / D3 -- portable CLI.  Nominal arm only (depth=1.0, dropout=0.0).
+
+Privileged arms (NOT deployment performance, NOT an upper bound):
+  D1_truepi_rna / D1_truepi_joint  -- given true pi (PROPORTIONS ONLY, never N)
+  D2_same_donor                    -- given the target donor's own reference pool
+Control arms: D2_cross_full (baseline), D2_cross_matched (size-matched control).
+D3_stage1_joint / D3_stage2_rna receive NO privileged information.
+
+options:
+  -h, --help            show this help message and exit
+  --data-dir DATA_DIR   directory holding pilot_counts.npz and pilot_cells.csv
+                        (default: ./data)
+  --output-dir OUTPUT_DIR
+                        where results are written (default: ./out)
+  --smoke               tiny run (1 seed, 4 spots per grid point)
+  --seeds SEEDS [SEEDS ...]
+                        override seeds (default 1 2 3)
+  --n-spots N_SPOTS     override spots per grid point (default 40)
+  --n-genes N_GENES     override selected genes (default 1500)
+  --threads THREADS     BLAS/OMP thread cap (default 4)
+
+########## summarize_p2.py --help ##########
+usage: summarize_p2.py [-h] [--results RESULTS] [--output-dir OUTPUT_DIR]
+
+Summarise P2 results.  theta is EIGHT-dimensional: each coarse type contributes
+theta1 = pi*s (first subtype) AND theta2 = pi*(1-s) (second subtype).  The results
+CSV stores only the first; the second is reconstructed here.
+
+Donor is the inference unit; seeds and pseudo-spots are TECHNICAL replicates.
+
+options:
+  -h, --help            show this help message and exit
+  --results RESULTS     results_p2.csv path
+  --output-dir OUTPUT_DIR
+                        where summaries are written
+
+########## verify_alignment.py --help ##########
+usage: verify_alignment.py [-h] [--data-dir DATA_DIR]
+                           [--baseline-dir BASELINE_DIR]
+                           [--baseline-csv BASELINE_CSV]
+                           [--output-dir OUTPUT_DIR] [--max-rows MAX_ROWS]
+                           [--tol TOL]
+
+Parity check against a FROZEN baseline run (regression guard for the port).
+
+Regenerates the nominal spots with the frozen rng scheme, recomputes the baseline
+crc32 cell-index hash convention, joins on the baseline's full row key
+(seed,split,donor,scenario,delta,eta,spot) and measures:
+  (a) byte-identical cell selection,
+  (b) whether the original M4 (joint flex, cross_full reference) recomputed on the
+      regenerated spot reproduces the stored pi_hat / s_hat.
+The baseline stores 4 decimals, so ~5e-5 is the storage-precision floor.
+Nothing is overwritten; this only reads the baseline.
+
+options:
+  -h, --help            show this help message and exit
+  --data-dir DATA_DIR   raw inputs
+  --baseline-dir BASELINE_DIR
+                        directory holding the frozen results_compstate.csv
+  --baseline-csv BASELINE_CSV
+  --output-dir OUTPUT_DIR
+  --max-rows MAX_ROWS   limit baseline rows compared (0 = all); use a small
+                        number for a quick check
+  --tol TOL             tolerance for pi/s agreement

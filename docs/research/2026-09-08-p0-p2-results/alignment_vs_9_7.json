@@ -1,0 +1,12 @@
+{
+ "old_nominal_M4_rows": 2640,
+ "regenerated_spots": 2640,
+ "cell_idx_hash_match": 2640,
+ "cell_idx_hash_mismatch": 0,
+ "key_missing_in_regen": 0,
+ "max_abs_pi_hat_diff_vs_old": 4.9994935518993255e-05,
+ "max_abs_s_hat_diff_vs_old": 4.9969223361395754e-05,
+ "note": "crc32 of the sorted cell-index list, the 9/7 convention, recomputed from regenerated spots and joined on the full 9/7 row key (seed,split,donor,scenario,delta,eta,spot). pi/s diffs are the ORIGINAL M4 recomputed on the regenerated spot vs the value stored on 9/7. Note the 9/7 stored pi_hat/s_hat are rounded to 4 decimals, so ~5e-5 is the storage floor.",
+ "mismatch_examples": [],
+ "verdict": "ALIGNED: every joined 9/7 nominal M4 row reproduces byte-identical cell selection and the recomputed M4 agrees to stored precision"
+}
