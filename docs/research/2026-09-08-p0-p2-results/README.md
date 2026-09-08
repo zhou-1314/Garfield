@@ -3,9 +3,7 @@
 本目录汇总 P0 准入、P1 基线审计与 P2 诊断结果；主结论见 [RESULTS.md](RESULTS.md)。P2 作者原始运行说明保留为 [README_P2.md](README_P2.md)。
 
 ## 复现
-权威运行位置为 spamot-2 作者目录：
-`/root/.ao/data/worktrees/spamot/spamot-2/docs/research/2026-09-08-p0-p2-diagnostics/`
-使用 `/opt/conda/bin/python`（numpy 1.26.4、pandas 2.3.3、scipy 1.15.3），在该目录按 README_P2 中三步命令执行；本整合目录不改脚本逻辑。
+仓库内可移植入口：`tools/research/compstate/`。使用 `/opt/conda/bin/python`（numpy 1.26.4、pandas 2.3.3、scipy 1.15.3），按该目录 README 的命令执行；外部数据需显式提供。历史作者目录仅作出处记录。
 
 ## 产物
 - [P0准入](p0_admission.json)
